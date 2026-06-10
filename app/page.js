@@ -11,7 +11,7 @@ const CSS = `
   .logo span { color: #3b82f6; }
   .tagline { font-size: 13px; color: #555568; letter-spacing: 3px; text-transform: uppercase; margin-top: 8px; font-family: 'JetBrains Mono', monospace; }
   .tabs { display: flex; gap: 2px; background: #13131a; border-radius: 10px; padding: 4px; margin-bottom: 32px; border: 1px solid #1e1e2e; }
-  .tab { flex: 1; padding: 10px; background: transparent; border: none; color: #555568; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; border-radius: 7px; transition: all 0.15s; }
+  .tab { flex: 1; padding: 10px; background: transparent; border: none; color: #555568; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; border-radius: 7px; transition: all 0.15s; }
   .tab:hover { color: #9090a8; }
   .tab.active { background: #1e1e2e; color: #e2e2e8; }
   .card { background: #13131a; border: 1px solid #1e1e2e; border-radius: 12px; padding: 24px; margin-bottom: 16px; }
@@ -60,6 +60,7 @@ const CSS = `
   .audit-detail { color: #555568; font-size: 11px; }
   .audit-type-synthesis { border-color: #f59e0b; }
   .audit-type-project { border-color: #22c55e; }
+  .audit-type-resume { border-color: #a78bfa; }
   .audit-type-error { border-color: #ef4444; }
   .philosophy { background: linear-gradient(135deg, #0d1829 0%, #13131a 100%); border: 1px solid #1e3a5f; border-radius: 12px; padding: 20px 24px; margin-bottom: 24px; display: flex; align-items: flex-start; gap: 16px; }
   .philosophy-mark { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 700; color: #3b82f6; line-height: 1; flex-shrink: 0; }
@@ -70,6 +71,12 @@ const CSS = `
   .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; }
   .badge-blue { background: #1e3a5f; color: #3b82f6; }
   .error-box { background: #1a0a0a; border: 1px solid #ef444444; border-radius: 10px; padding: 16px; color: #ef4444; font-family: 'JetBrains Mono', monospace; font-size: 13px; margin-top: 12px; }
+  .mode-selector { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .mode-btn { padding: 8px 16px; border-radius: 8px; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid #1e1e2e; background: transparent; color: #9090a8; transition: all 0.15s; }
+  .mode-btn:hover { border-color: #a78bfa; color: #e2e2e8; }
+  .mode-btn.active { background: #1a1030; border-color: #a78bfa; color: #a78bfa; }
+  .resume-output-box { background: #0a0a0f; border: 1px solid #a78bfa44; border-radius: 10px; padding: 20px; font-size: 15px; line-height: 1.8; color: #ede8f8; white-space: pre-wrap; min-height: 200px; }
+  .resume-output-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #a78bfa; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
 `;
 
 const ts = () => new Date().toLocaleTimeString("en-US", { hour12: false });
@@ -91,6 +98,14 @@ export default function OneThreeOne() {
   const [editingProject, setEditingProject] = useState(null);
   const [showNewProject, setShowNewProject] = useState(false);
 
+  // Resume state
+  const [resumeText, setResumeText] = useState("");
+  const [jobPosting, setJobPosting] = useState("");
+  const [resumeMode, setResumeMode] = useState("both");
+  const [resumeOutput, setResumeOutput] = useState("");
+  const [resumeLoading, setResumeLoading] = useState(false);
+  const [resumeError, setResumeError] = useState("");
+
   useEffect(() => { localStorage.setItem("o31_projects", JSON.stringify(projects)); }, [projects]);
   useEffect(() => { localStorage.setItem("o31_audit", JSON.stringify(auditLog)); }, [auditLog]);
 
@@ -100,29 +115,16 @@ export default function OneThreeOne() {
     setOutput("");
     setError("");
     setModelsUsed([]);
-
     const log1 = addAudit(auditLog, "synthesis", "Synthesis started", `Project: ${selectedProject.name} | Prompt: ${prompt.slice(0, 80)}...`);
     setAuditLog(log1);
-
     try {
       const res = await fetch("/api/synthesize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt,
-          systemPrompt: selectedProject.systemPrompt || "",
-          claudeWeight: selectedProject.claudeWeight,
-          gptWeight: selectedProject.gptWeight,
-          geminiWeight: selectedProject.geminiWeight
-        })
+        body: JSON.stringify({ prompt, systemPrompt: selectedProject.systemPrompt || "", claudeWeight: selectedProject.claudeWeight, gptWeight: selectedProject.gptWeight, geminiWeight: selectedProject.geminiWeight })
       });
-
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || `Server error ${res.status}`);
-      }
-
+      if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
       setOutput(data.output);
       setModelsUsed(data.modelsUsed || []);
       setAuditLog(addAudit(log1, "synthesis", "Synthesis complete", `Models: ${(data.modelsUsed || []).join(", ")} | Output: ${data.output.slice(0, 80)}...`));
@@ -131,6 +133,49 @@ export default function OneThreeOne() {
       setAuditLog(addAudit(log1, "error", "Synthesis failed", err.message));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function runResume() {
+    if (!resumeText.trim()) return;
+    if (resumeMode !== "polish" && !jobPosting.trim()) {
+      alert("Please paste the job posting to tailor your resume.");
+      return;
+    }
+    setResumeLoading(true);
+    setResumeOutput("");
+    setResumeError("");
+
+    const modeLabel = resumeMode === "polish" ? "Polish only" : resumeMode === "tailor" ? "Tailor to job" : "Polish + Tailor";
+    const log1 = addAudit(auditLog, "resume", "Resume run started", modeLabel);
+    setAuditLog(log1);
+
+    const systemPrompt = `You are an expert resume writer and career coach specializing in helping highly educated professionals land roles that match their qualifications. You write with precision, clarity, and impact. You understand ATS systems, hiring manager psychology, and how to position advanced degrees (Master's, Bachelor's) as genuine differentiators. Never fabricate experience. Enhance what exists.`;
+
+    let userPrompt = "";
+    if (resumeMode === "polish") {
+      userPrompt = `Polish and strengthen this resume. Improve clarity, impact, and professional tone. Optimize bullet points with strong action verbs and measurable results where possible. Ensure formatting is clean and ATS-friendly. Return the complete improved resume.\n\nRESUME:\n${resumeText}`;
+    } else if (resumeMode === "tailor") {
+      userPrompt = `Tailor this resume specifically for the job posting below. Align skills, experience, and language to match what the employer is looking for. Highlight the most relevant qualifications. Return the complete tailored resume.\n\nRESUME:\n${resumeText}\n\nJOB POSTING:\n${jobPosting}`;
+    } else {
+      userPrompt = `First polish this resume for clarity, impact, and professional tone. Then tailor it specifically for the job posting below. Align language, skills, and experience to what the employer needs. Highlight advanced education as a differentiator. Return the complete polished and tailored resume.\n\nRESUME:\n${resumeText}\n\nJOB POSTING:\n${jobPosting}`;
+    }
+
+    try {
+      const res = await fetch("/api/synthesize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: userPrompt, systemPrompt, claudeWeight: 40, gptWeight: 35, geminiWeight: 25 })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
+      setResumeOutput(data.output);
+      setAuditLog(addAudit(log1, "resume", "Resume complete", `Mode: ${modeLabel}`));
+    } catch (err) {
+      setResumeError(err.message);
+      setAuditLog(addAudit(log1, "error", "Resume failed", err.message));
+    } finally {
+      setResumeLoading(false);
     }
   }
 
@@ -144,11 +189,12 @@ export default function OneThreeOne() {
         </div>
 
         <div className="tabs">
-          {[["run","Run"], ["projects","Projects"], ["audit","Audit Log"]].map(([id, label]) => (
+          {[["run","Run"], ["resume","Resume"], ["projects","Projects"], ["audit","Audit Log"]].map(([id, label]) => (
             <button key={id} className={`tab ${tab === id ? "active" : ""}`} onClick={() => setTab(id)}>{label}</button>
           ))}
         </div>
 
+        {/* ── RUN TAB ── */}
         {tab === "run" && (
           <div>
             <div className="philosophy">
@@ -157,7 +203,6 @@ export default function OneThreeOne() {
                 <strong>Eighty percent is a win.</strong> You will never make everyone happy — including yourself. Pick your output, move forward. Analysis paralysis is the enemy of done.
               </div>
             </div>
-
             <div className="card">
               <div className="card-label">Select Project</div>
               {projects.length === 0 ? (
@@ -173,7 +218,6 @@ export default function OneThreeOne() {
                 </div>
               ))}
             </div>
-
             {selectedProject && (
               <div className="card">
                 <div className="card-label">Your Prompt</div>
@@ -185,16 +229,8 @@ export default function OneThreeOne() {
                 </button>
               </div>
             )}
-
-            {loading && (
-              <div className="loader">
-                <div className="dot-pulse"><span/><span/><span/></div>
-                Firing models simultaneously...
-              </div>
-            )}
-
+            {loading && <div className="loader"><div className="dot-pulse"><span/><span/><span/></div>Firing models simultaneously...</div>}
             {error && <div className="error-box">Error: {error}</div>}
-
             {output && !loading && (
               <div className="card">
                 <div className="output-label">Synthesized Output</div>
@@ -209,13 +245,74 @@ export default function OneThreeOne() {
           </div>
         )}
 
+        {/* ── RESUME TAB ── */}
+        {tab === "resume" && (
+          <div>
+            <div className="philosophy" style={{ borderColor: "#2d1f5e" }}>
+              <div className="philosophy-mark" style={{ color: "#a78bfa" }}>✦</div>
+              <div className="philosophy-text">
+                <strong>Your credentials are the differentiator.</strong> Three models working together to position your education and experience exactly where it needs to be.
+              </div>
+            </div>
+
+            <div className="card">
+              <div className="card-label">Mode</div>
+              <div className="mode-selector">
+                {[["polish","Polish Resume"], ["tailor","Tailor to Job"], ["both","Polish + Tailor"]].map(([id, label]) => (
+                  <button key={id} className={`mode-btn ${resumeMode === id ? "active" : ""}`} onClick={() => setResumeMode(id)}>{label}</button>
+                ))}
+              </div>
+
+              <div className="form-row">
+                <label>Paste Your Resume</label>
+                <textarea
+                  placeholder="Paste your full resume here..."
+                  value={resumeText}
+                  onChange={e => setResumeText(e.target.value)}
+                  style={{ minHeight: 200 }}
+                />
+              </div>
+
+              {resumeMode !== "polish" && (
+                <div className="form-row">
+                  <label>Paste Job Posting</label>
+                  <textarea
+                    placeholder="Paste the full job description here..."
+                    value={jobPosting}
+                    onChange={e => setJobPosting(e.target.value)}
+                    style={{ minHeight: 160 }}
+                  />
+                </div>
+              )}
+
+              <button className="btn btn-primary" onClick={runResume} disabled={resumeLoading || !resumeText.trim()}
+                style={{ background: resumeLoading ? undefined : "#7c3aed" }}>
+                {resumeLoading ? "Analyzing..." : "Run Resume 1·3·1"}
+              </button>
+            </div>
+
+            {resumeLoading && <div className="loader"><div className="dot-pulse"><span/><span/><span/></div>Three models optimizing your resume...</div>}
+            {resumeError && <div className="error-box">Error: {resumeError}</div>}
+            {resumeOutput && !resumeLoading && (
+              <div className="card">
+                <div className="resume-output-label">Optimized Resume</div>
+                <div className="resume-output-box">{resumeOutput}</div>
+                <div className="btn-row">
+                  <button className="btn btn-ghost" onClick={() => navigator.clipboard.writeText(resumeOutput)}>Copy Resume</button>
+                  <button className="btn btn-ghost" onClick={() => { setResumeOutput(""); setResumeError(""); }}>Clear</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── PROJECTS TAB ── */}
         {tab === "projects" && (
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div className="section-title">Projects</div>
               <button className="btn btn-primary" onClick={() => { setShowNewProject(true); setEditingProject(null); }}>+ New Project</button>
             </div>
-
             {(showNewProject || editingProject) && (
               <ProjectForm
                 initial={editingProject}
@@ -233,7 +330,6 @@ export default function OneThreeOne() {
                 onCancel={() => { setShowNewProject(false); setEditingProject(null); }}
               />
             )}
-
             {projects.length === 0 && !showNewProject ? (
               <div className="empty">No projects yet. Create your first one above.</div>
             ) : projects.map(p => (
@@ -244,8 +340,7 @@ export default function OneThreeOne() {
                   {p.description && <div className="project-meta" style={{ marginTop: 4, color: "#9090a8" }}>{p.description}</div>}
                 </div>
                 <div className="project-actions">
-                  <button className="btn btn-ghost" style={{ padding: "6px 14px", fontSize: 13 }}
-                    onClick={() => { setEditingProject(p); setShowNewProject(false); }}>Edit</button>
+                  <button className="btn btn-ghost" style={{ padding: "6px 14px", fontSize: 13 }} onClick={() => { setEditingProject(p); setShowNewProject(false); }}>Edit</button>
                   <button className="btn btn-danger" style={{ padding: "6px 14px", fontSize: 13 }}
                     onClick={() => { if (confirm(`Delete "${p.name}"?`)) { setProjects(ps => ps.filter(x => x.id !== p.id)); if (selectedProject?.id === p.id) setSelectedProject(null); setAuditLog(a => addAudit(a, "project", "Project deleted", p.name)); } }}>Delete</button>
                 </div>
@@ -254,6 +349,7 @@ export default function OneThreeOne() {
           </div>
         )}
 
+        {/* ── AUDIT LOG TAB ── */}
         {tab === "audit" && (
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
