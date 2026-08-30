@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import WelcomeModal from "@/components/WelcomeModal";
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -180,9 +181,10 @@ export default function OneThreeOne() {
   }
 
   return (
-    <>
-      <style>{CSS}</style>
-      <div className="app">
+  <>
+    <style>{CSS}</style>
+    <WelcomeModal />
+    <div className="app">
         <div className="header">
           <div className="logo">1<span>3</span>1</div>
           <div className="tagline">Three Models · One Output · No Overthinking</div>
