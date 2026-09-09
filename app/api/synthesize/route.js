@@ -1,33 +1,55 @@
 import { NextResponse } from "next/server";
 
 export async function POST(req) {
-  const { prompt, systemPrompt, claudeWeight, gptWeight, geminiWeight } = await req.json();
+  const {
+    prompt,
+    systemPrompt,
+    claudeWeight,
+    gptWeight,
+    geminiWeight,
+    claudeKey,
+    gptKey,
+    geminiKey,
+  } = await req.json();
 
   if (!prompt) return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
+
+  // Use user-supplied keys if provided, fall back to server env vars
+  const resolvedKeys = {
+    claude: claudeKey || process.env.ANTHROPIC_API_KEY,
+    gpt: gptKey || process.env.OPENAI_API_KEY,
+    gemini: geminiKey || process.env.GEMINI_API_KEY,
+  };
 
   const results = { claude: null, gpt: null, gemini: null, errors: [] };
   const calls = [];
 
-  if (claudeWeight > 0) {
+  if (claudeWeight > 0 && resolvedKeys.claude) {
     calls.push(
-      callClaude(prompt, systemPrompt)
+      callClaude(prompt, systemPrompt, resolvedKeys.claude)
         .then(r => { results.claude = r; })
         .catch(e => { results.errors.push(`Claude: ${e.message}`); })
     );
   }
-  if (gptWeight > 0) {
+  if (gptWeight > 0 && resolvedKeys.gpt) {
     calls.push(
-      callGPT(prompt, systemPrompt)
+      callGPT(prompt, systemPrompt, resolvedKeys.gpt)
         .then(r => { results.gpt = r; })
         .catch(e => { results.errors.push(`GPT: ${e.message}`); })
     );
   }
-  if (geminiWeight > 0) {
+  if (geminiWeight > 0 && resolvedKeys.gemini) {
     calls.push(
-      callGemini(prompt)
+      callGemini(prompt, resolvedKeys.gemini)
         .then(r => { results.gemini = r; })
         .catch(e => { results.errors.push(`Gemini: ${e.message}`); })
     );
+  }
+
+  if (!calls.length) {
+    return NextResponse.json({
+      error: "No API keys available. Add your keys in Settings to get started.",
+    }, { status: 400 });
   }
 
   await Promise.all(calls);
@@ -56,7 +78,7 @@ ORIGINAL PROMPT: ${prompt}
 
 ${synthParts.join("\n\n")}`;
 
-    const finalOutput = await callClaude(synthPrompt, "");
+    const finalOutput = await callClaude(synthPrompt, "", resolvedKeys.claude);
     return NextResponse.json({ output: finalOutput, modelsUsed: getModelsUsed(results) });
   } catch (e) {
     return NextResponse.json({ error: `Synthesis failed: ${e.message}`, details: results.errors }, { status: 500 });
@@ -71,12 +93,12 @@ function getModelsUsed(results) {
   return used;
 }
 
-async function callClaude(prompt, systemPrompt) {
+async function callClaude(prompt, systemPrompt, apiKey) {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": process.env.ANTHROPIC_API_KEY,
+      "x-api-key": apiKey,
       "anthropic-version": "2023-06-01"
     },
     body: JSON.stringify({
@@ -94,12 +116,12 @@ async function callClaude(prompt, systemPrompt) {
   return data.content[0].text;
 }
 
-async function callGPT(prompt, systemPrompt) {
+async function callGPT(prompt, systemPrompt, apiKey) {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+      "Authorization": `Bearer ${apiKey}`
     },
     body: JSON.stringify({
       model: "gpt-4o",
@@ -118,9 +140,9 @@ async function callGPT(prompt, systemPrompt) {
   return data.choices[0].message.content;
 }
 
-async function callGemini(prompt) {
+async function callGemini(prompt, apiKey) {
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
