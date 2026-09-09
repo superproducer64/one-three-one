@@ -6,7 +6,7 @@ const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #0a0a0f; color: #e2e2e8; font-family: 'Space Grotesk', sans-serif; min-height: 100vh; }
-  .app { max-width: 900px; margin: 0 auto; padding: 32px 20px 80px; }
+  .app { max-width: 900px; margin: 0 auto; padding: env(safe-area-inset-top, 48px) 20px 80px; }
   .header { text-align: center; margin-bottom: 48px; }
   .logo { font-family: 'JetBrains Mono', monospace; font-size: 52px; font-weight: 500; letter-spacing: -2px; color: #fff; line-height: 1; }
   .logo span { color: #3b82f6; }
