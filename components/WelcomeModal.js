@@ -29,9 +29,9 @@ export default function WelcomeModal() {
         <div style={styles.logo}>1·3·1</div>
         <div style={styles.tagline}>Three models. One output. No overthinking.</div>
 
-        {/* Dots */}
+        {/* Dots — now 4 */}
         <div style={styles.dotsRow}>
-          {[0,1,2].map(i => (
+          {[0,1,2,3].map(i => (
             <div key={i} style={{...styles.dot, ...(i === step ? styles.dotActive : {})}} />
           ))}
         </div>
@@ -97,6 +97,38 @@ export default function WelcomeModal() {
             </div>
             <div style={styles.btnRow}>
               <button style={styles.btnSecondary} onClick={() => setStep(1)}>Back</button>
+              <button style={styles.btnPrimary} onClick={() => setStep(3)}>One more thing →</button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4 — API Keys */}
+        {step === 3 && (
+          <div>
+            <div style={styles.headline}>Connect your AI keys.</div>
+            <div style={styles.body}>
+              1·3·1 runs on your own API keys — stored only on your device, never on our servers. Each provider has a free tier to get started.
+            </div>
+
+            {[
+              { label: 'Claude', color: '#5599dd', bg: '#0d1a2e', border: '#1a4a7a', url: 'https://console.anthropic.com/settings/keys', linkLabel: 'console.anthropic.com' },
+              { label: 'GPT-4o', color: '#44bb77', bg: '#0d2218', border: '#1a6a3a', url: 'https://platform.openai.com/api-keys', linkLabel: 'platform.openai.com' },
+              { label: 'Gemini', color: '#ddaa44', bg: '#2a1a0d', border: '#7a4a1a', url: 'https://aistudio.google.com/app/apikey', linkLabel: 'aistudio.google.com' },
+            ].map(m => (
+              <div key={m.label} style={{...styles.keyRow, background: m.bg, borderColor: m.border}}>
+                <div style={{...styles.keyLabel, color: m.color}}>{m.label}</div>
+                <a href={m.url} target="_blank" rel="noopener noreferrer" style={styles.keyLink}>
+                  Get key → {m.linkLabel} ↗
+                </a>
+              </div>
+            ))}
+
+            <div style={{...styles.body, marginTop: '1rem', marginBottom: '0.5rem'}}>
+              Add them in the <span style={styles.emphasis}>Settings tab</span> after you close this. You&apos;re all set.
+            </div>
+
+            <div style={styles.btnRow}>
+              <button style={styles.btnSecondary} onClick={() => setStep(2)}>Back</button>
               <button style={styles.btnPrimary} onClick={close}>Let&apos;s go →</button>
             </div>
           </div>
@@ -147,6 +179,9 @@ const styles = {
   tipBox: { background: '#0d1020', border: '0.5px solid #2233aa', borderRadius: '8px', padding: '10px 12px', marginBottom: '1rem' },
   tipLabel: { fontSize: '11px', color: '#3344aa', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' },
   tipText: { fontSize: '13px', color: '#6677cc', lineHeight: 1.5 },
+  keyRow: { borderRadius: '8px', padding: '10px 14px', marginBottom: '8px', border: '0.5px solid' },
+  keyLabel: { fontSize: '12px', fontWeight: 600, marginBottom: '4px' },
+  keyLink: { fontSize: '12px', color: '#4455ee', textDecoration: 'none' },
   btnRow: { display: 'flex', gap: '8px', alignItems: 'center', marginTop: '0.5rem' },
   btnPrimary: { flex: 1, background: '#4455ee', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' },
   btnSecondary: { background: 'transparent', color: '#5a5a7a', border: '0.5px solid #2a2a3a', borderRadius: '8px', padding: '10px 16px', fontSize: '13px', cursor: 'pointer' },
