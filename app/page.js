@@ -6,9 +6,8 @@ const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #0a0a0f; color: #e2e2e8; font-family: 'Space Grotesk', sans-serif; min-height: 100vh; }
-  ..app { max-width: 900px; margin: 0 auto; padding: 0 20px 80px; }
-.header { text-align: center; margin-bottom: 48px; padding-top: calc(env(safe-area-inset-top, 20px) + 48px); }
-  .header { text-align: center; margin-bottom: 48px; }
+  .app { max-width: 900px; margin: 0 auto; padding: 0 20px 80px; }
+  .header { text-align: center; margin-bottom: 48px; padding-top: calc(env(safe-area-inset-top, 20px) + 48px); }
   .logo { font-family: 'JetBrains Mono', monospace; font-size: 52px; font-weight: 500; letter-spacing: -2px; color: #fff; line-height: 1; }
   .logo span { color: #3b82f6; }
   .tagline { font-size: 13px; color: #555568; letter-spacing: 3px; text-transform: uppercase; margin-top: 8px; font-family: 'JetBrains Mono', monospace; }
@@ -85,9 +84,6 @@ const CSS = `
   .resume-output-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #a78bfa; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
   .key-input-row { display: flex; gap: 8px; align-items: center; }
   .key-input-row input { flex: 1; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
-  .key-status { font-family: 'JetBrains Mono', monospace; font-size: 11px; margin-top: 6px; }
-  .key-status.set { color: #22c55e; }
-  .key-status.unset { color: #555568; }
   .key-link { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #3b82f6; text-decoration: none; margin-top: 4px; display: inline-block; }
   .key-link:hover { text-decoration: underline; }
   .settings-model-card { background: #0a0a0f; border: 1px solid #1e1e2e; border-radius: 10px; padding: 20px; margin-bottom: 12px; }
@@ -104,15 +100,15 @@ function addAudit(log, type, action, detail = "") {
 }
 
 const MODELS = [
-  { id: "claude", label: "Claude", role: "Depth & nuance", color: "#f59e0b", storageKey: "o31_key_claude", placeholder: "sk-ant-...", link: "https://console.anthropic.com/settings/keys", linkLabel: "Get key → console.anthropic.com" },
-  { id: "gpt", label: "GPT-4o", role: "Structure & clarity", color: "#22c55e", storageKey: "o31_key_gpt", placeholder: "sk-...", link: "https://platform.openai.com/api-keys", linkLabel: "Get key → platform.openai.com" },
-  { id: "gemini", label: "Gemini", role: "Breadth & research", color: "#a78bfa", storageKey: "o31_key_gemini", placeholder: "AIza...", link: "https://aistudio.google.com/app/apikey", linkLabel: "Get key → aistudio.google.com" },
+  { id: "claude", label: "Claude", role: "Depth & nuance", color: "#f59e0b", placeholder: "sk-ant-...", link: "https://console.anthropic.com/settings/keys", linkLabel: "Get key → console.anthropic.com" },
+  { id: "gpt", label: "GPT-4o", role: "Structure & clarity", color: "#22c55e", placeholder: "sk-...", link: "https://platform.openai.com/api-keys", linkLabel: "Get key → platform.openai.com" },
+  { id: "gemini", label: "Gemini", role: "Breadth & research", color: "#a78bfa", placeholder: "AIza...", link: "https://aistudio.google.com/app/apikey", linkLabel: "Get key → aistudio.google.com" },
 ];
 
 export default function OneThreeOne() {
   const [tab, setTab] = useState("run");
-  const [projects, setProjects] = useState(() => { try { return JSON.parse(localStorage.getItem("o31_projects") || "[]"); } catch { return []; } });
-  const [auditLog, setAuditLog] = useState(() => { try { return JSON.parse(localStorage.getItem("o31_audit") || "[]"); } catch { return []; } });
+  const [projects, setProjects] = useState([]);
+  const [auditLog, setAuditLog] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [prompt, setPrompt] = useState("");
   const [output, setOutput] = useState("");
@@ -121,27 +117,30 @@ export default function OneThreeOne() {
   const [error, setError] = useState("");
   const [editingProject, setEditingProject] = useState(null);
   const [showNewProject, setShowNewProject] = useState(false);
-
-  // Resume state
   const [resumeText, setResumeText] = useState("");
   const [jobPosting, setJobPosting] = useState("");
   const [resumeMode, setResumeMode] = useState("both");
   const [resumeOutput, setResumeOutput] = useState("");
   const [resumeLoading, setResumeLoading] = useState(false);
   const [resumeError, setResumeError] = useState("");
+  const [keys, setKeys] = useState({ claude: "", gpt: "", gemini: "" });
+  const [showKeys, setShowKeys] = useState({ claude: false, gpt: false, gemini: false });
+  const [settingsSaved, setSettingsSaved] = useState(false);
 
-  // Settings state
-  const [keys, setKeys] = useState(() => {
+  // Load from localStorage client-side only — fixes SSR hydration error
+  useEffect(() => {
     try {
-      return {
+      const p = localStorage.getItem("o31_projects");
+      const a = localStorage.getItem("o31_audit");
+      if (p) setProjects(JSON.parse(p));
+      if (a) setAuditLog(JSON.parse(a));
+      setKeys({
         claude: localStorage.getItem("o31_key_claude") || "",
         gpt: localStorage.getItem("o31_key_gpt") || "",
         gemini: localStorage.getItem("o31_key_gemini") || "",
-      };
-    } catch { return { claude: "", gpt: "", gemini: "" }; }
-  });
-  const [showKeys, setShowKeys] = useState({ claude: false, gpt: false, gemini: false });
-  const [settingsSaved, setSettingsSaved] = useState(false);
+      });
+    } catch {}
+  }, []);
 
   useEffect(() => { localStorage.setItem("o31_projects", JSON.stringify(projects)); }, [projects]);
   useEffect(() => { localStorage.setItem("o31_audit", JSON.stringify(auditLog)); }, [auditLog]);
@@ -157,9 +156,7 @@ export default function OneThreeOne() {
       setSettingsSaved(true);
       setAuditLog(a => addAudit(a, "settings", "API keys updated", `Claude: ${keys.claude ? "set" : "cleared"} · GPT: ${keys.gpt ? "set" : "cleared"} · Gemini: ${keys.gemini ? "set" : "cleared"}`));
       setTimeout(() => setSettingsSaved(false), 3000);
-    } catch (e) {
-      console.error("Failed to save keys", e);
-    }
+    } catch (e) { console.error("Failed to save keys", e); }
   }
 
   function clearAllKeys() {
@@ -169,14 +166,9 @@ export default function OneThreeOne() {
     setAuditLog(a => addAudit(a, "settings", "All API keys cleared", ""));
   }
 
-  const keysConfigured = keys.claude || keys.gpt || keys.gemini;
-
   async function runSynthesis() {
     if (!selectedProject || !prompt.trim()) return;
-    setLoading(true);
-    setOutput("");
-    setError("");
-    setModelsUsed([]);
+    setLoading(true); setOutput(""); setError(""); setModelsUsed([]);
     const log1 = addAudit(auditLog, "synthesis", "Synthesis started", `Project: ${selectedProject.name} | Prompt: ${prompt.slice(0, 80)}...`);
     setAuditLog(log1);
     try {
@@ -184,11 +176,8 @@ export default function OneThreeOne() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt,
-          systemPrompt: selectedProject.systemPrompt || "",
-          claudeWeight: selectedProject.claudeWeight,
-          gptWeight: selectedProject.gptWeight,
-          geminiWeight: selectedProject.geminiWeight,
+          prompt, systemPrompt: selectedProject.systemPrompt || "",
+          claudeWeight: selectedProject.claudeWeight, gptWeight: selectedProject.gptWeight, geminiWeight: selectedProject.geminiWeight,
           ...(keys.claude && { claudeKey: keys.claude }),
           ...(keys.gpt && { gptKey: keys.gpt }),
           ...(keys.gemini && { geminiKey: keys.gemini }),
@@ -196,48 +185,32 @@ export default function OneThreeOne() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
-      setOutput(data.output);
-      setModelsUsed(data.modelsUsed || []);
-      setAuditLog(addAudit(log1, "synthesis", "Synthesis complete", `Models: ${(data.modelsUsed || []).join(", ")} | Output: ${data.output.slice(0, 80)}...`));
+      setOutput(data.output); setModelsUsed(data.modelsUsed || []);
+      setAuditLog(addAudit(log1, "synthesis", "Synthesis complete", `Models: ${(data.modelsUsed || []).join(", ")}`));
     } catch (err) {
       setError(err.message);
       setAuditLog(addAudit(log1, "error", "Synthesis failed", err.message));
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
   async function runResume() {
     if (!resumeText.trim()) return;
-    if (resumeMode !== "polish" && !jobPosting.trim()) {
-      alert("Please paste the job posting to tailor your resume.");
-      return;
-    }
-    setResumeLoading(true);
-    setResumeOutput("");
-    setResumeError("");
+    if (resumeMode !== "polish" && !jobPosting.trim()) { alert("Please paste the job posting."); return; }
+    setResumeLoading(true); setResumeOutput(""); setResumeError("");
     const modeLabel = resumeMode === "polish" ? "Polish only" : resumeMode === "tailor" ? "Tailor to job" : "Polish + Tailor";
     const log1 = addAudit(auditLog, "resume", "Resume run started", modeLabel);
     setAuditLog(log1);
-    const systemPrompt = `You are an expert resume writer and career coach specializing in helping highly educated professionals land roles that match their qualifications. You write with precision, clarity, and impact. You understand ATS systems, hiring manager psychology, and how to position advanced degrees (Master's, Bachelor's) as genuine differentiators. Never fabricate experience. Enhance what exists.`;
+    const systemPrompt = `You are an expert resume writer and career coach specializing in helping highly educated professionals land roles that match their qualifications. You write with precision, clarity, and impact. Never fabricate experience. Enhance what exists.`;
     let userPrompt = "";
-    if (resumeMode === "polish") {
-      userPrompt = `Polish and strengthen this resume. Improve clarity, impact, and professional tone. Optimize bullet points with strong action verbs and measurable results where possible. Ensure formatting is clean and ATS-friendly. Return the complete improved resume.\n\nRESUME:\n${resumeText}`;
-    } else if (resumeMode === "tailor") {
-      userPrompt = `Tailor this resume specifically for the job posting below. Align skills, experience, and language to match what the employer is looking for. Highlight the most relevant qualifications. Return the complete tailored resume.\n\nRESUME:\n${resumeText}\n\nJOB POSTING:\n${jobPosting}`;
-    } else {
-      userPrompt = `First polish this resume for clarity, impact, and professional tone. Then tailor it specifically for the job posting below. Align language, skills, and experience to what the employer needs. Highlight advanced education as a differentiator. Return the complete polished and tailored resume.\n\nRESUME:\n${resumeText}\n\nJOB POSTING:\n${jobPosting}`;
-    }
+    if (resumeMode === "polish") userPrompt = `Polish and strengthen this resume. Improve clarity, impact, and professional tone. Return the complete improved resume.\n\nRESUME:\n${resumeText}`;
+    else if (resumeMode === "tailor") userPrompt = `Tailor this resume specifically for the job posting below. Return the complete tailored resume.\n\nRESUME:\n${resumeText}\n\nJOB POSTING:\n${jobPosting}`;
+    else userPrompt = `Polish this resume then tailor it for the job posting below. Return the complete result.\n\nRESUME:\n${resumeText}\n\nJOB POSTING:\n${jobPosting}`;
     try {
       const res = await fetch("/api/synthesize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: userPrompt,
-          systemPrompt,
-          claudeWeight: 40,
-          gptWeight: 35,
-          geminiWeight: 25,
+          prompt: userPrompt, systemPrompt, claudeWeight: 40, gptWeight: 35, geminiWeight: 25,
           ...(keys.claude && { claudeKey: keys.claude }),
           ...(keys.gpt && { gptKey: keys.gpt }),
           ...(keys.gemini && { geminiKey: keys.gemini }),
@@ -250,9 +223,7 @@ export default function OneThreeOne() {
     } catch (err) {
       setResumeError(err.message);
       setAuditLog(addAudit(log1, "error", "Resume failed", err.message));
-    } finally {
-      setResumeLoading(false);
-    }
+    } finally { setResumeLoading(false); }
   }
 
   return (
@@ -266,32 +237,29 @@ export default function OneThreeOne() {
         </div>
 
         <div className="tabs">
-          {[["run","Run"], ["resume","Resume"], ["projects","Projects"], ["audit","Audit Log"], ["settings","Settings"]].map(([id, label]) => (
-            <button key={id} className={`tab ${tab === id ? "active" : ""}`} onClick={() => setTab(id)}>{label}</button>
+          {[["run","Run"],["resume","Resume"],["projects","Projects"],["audit","Audit Log"],["settings","Settings"]].map(([id,label]) => (
+            <button key={id} className={`tab ${tab===id?"active":""}`} onClick={() => setTab(id)}>{label}</button>
           ))}
         </div>
 
-        {/* ── RUN TAB ── */}
+        {/* RUN TAB */}
         {tab === "run" && (
           <div>
             <div className="philosophy">
               <div className="philosophy-mark">80</div>
-              <div className="philosophy-text">
-                <strong>Eighty percent is a win.</strong> You will never make everyone happy — including yourself. Pick your output, move forward. Analysis paralysis is the enemy of done.
-              </div>
+              <div className="philosophy-text"><strong>Eighty percent is a win.</strong> You will never make everyone happy — including yourself. Pick your output, move forward. Analysis paralysis is the enemy of done.</div>
             </div>
             <div className="card">
               <div className="card-label">Select Project</div>
-              {projects.length === 0 ? (
-                <div className="empty">No projects yet. Create one in the Projects tab.</div>
-              ) : projects.map(p => (
-                <div key={p.id} className={`project-item ${selectedProject?.id === p.id ? "selected" : ""}`}
-                  onClick={() => { setSelectedProject(p); setAuditLog(a => addAudit(a, "project", "Project selected", p.name)); }}>
+              {projects.length === 0 ? <div className="empty">No projects yet. Create one in the Projects tab.</div>
+              : projects.map(p => (
+                <div key={p.id} className={`project-item ${selectedProject?.id===p.id?"selected":""}`}
+                  onClick={() => { setSelectedProject(p); setAuditLog(a => addAudit(a,"project","Project selected",p.name)); }}>
                   <div>
                     <div className="project-title">{p.name}</div>
                     <div className="project-meta">Claude {p.claudeWeight}% · GPT {p.gptWeight}% · Gemini {p.geminiWeight}%</div>
                   </div>
-                  {selectedProject?.id === p.id && <span className="badge badge-blue">ACTIVE</span>}
+                  {selectedProject?.id===p.id && <span className="badge badge-blue">ACTIVE</span>}
                 </div>
               ))}
             </div>
@@ -301,7 +269,7 @@ export default function OneThreeOne() {
                 <div className="form-row">
                   <textarea placeholder="Enter your prompt here..." value={prompt} onChange={e => setPrompt(e.target.value)} />
                 </div>
-                <button className="btn btn-primary" onClick={runSynthesis} disabled={loading || !prompt.trim()}>
+                <button className="btn btn-primary" onClick={runSynthesis} disabled={loading||!prompt.trim()}>
                   {loading ? "Synthesizing..." : "Run 1·3·1"}
                 </button>
               </div>
@@ -311,7 +279,7 @@ export default function OneThreeOne() {
             {output && !loading && (
               <div className="card">
                 <div className="output-label">Synthesized Output</div>
-                {modelsUsed.length > 0 && <div className="models-used">via {modelsUsed.join(" · ")}</div>}
+                {modelsUsed.length>0 && <div className="models-used">via {modelsUsed.join(" · ")}</div>}
                 <div className="output-box">{output}</div>
                 <div className="btn-row">
                   <button className="btn btn-ghost" onClick={() => navigator.clipboard.writeText(output)}>Copy Output</button>
@@ -322,33 +290,31 @@ export default function OneThreeOne() {
           </div>
         )}
 
-        {/* ── RESUME TAB ── */}
+        {/* RESUME TAB */}
         {tab === "resume" && (
           <div>
-            <div className="philosophy" style={{ borderColor: "#2d1f5e" }}>
-              <div className="philosophy-mark" style={{ color: "#a78bfa" }}>✦</div>
-              <div className="philosophy-text">
-                <strong>Your credentials are the differentiator.</strong> Three models working together to position your education and experience exactly where it needs to be.
-              </div>
+            <div className="philosophy" style={{borderColor:"#2d1f5e"}}>
+              <div className="philosophy-mark" style={{color:"#a78bfa"}}>✦</div>
+              <div className="philosophy-text"><strong>Your credentials are the differentiator.</strong> Three models working together to position your education and experience exactly where it needs to be.</div>
             </div>
             <div className="card">
               <div className="card-label">Mode</div>
               <div className="mode-selector">
-                {[["polish","Polish Resume"], ["tailor","Tailor to Job"], ["both","Polish + Tailor"]].map(([id, label]) => (
-                  <button key={id} className={`mode-btn ${resumeMode === id ? "active" : ""}`} onClick={() => setResumeMode(id)}>{label}</button>
+                {[["polish","Polish Resume"],["tailor","Tailor to Job"],["both","Polish + Tailor"]].map(([id,label]) => (
+                  <button key={id} className={`mode-btn ${resumeMode===id?"active":""}`} onClick={() => setResumeMode(id)}>{label}</button>
                 ))}
               </div>
               <div className="form-row">
                 <label>Paste Your Resume</label>
-                <textarea placeholder="Paste your full resume here..." value={resumeText} onChange={e => setResumeText(e.target.value)} style={{ minHeight: 200 }} />
+                <textarea placeholder="Paste your full resume here..." value={resumeText} onChange={e => setResumeText(e.target.value)} style={{minHeight:200}} />
               </div>
               {resumeMode !== "polish" && (
                 <div className="form-row">
                   <label>Paste Job Posting</label>
-                  <textarea placeholder="Paste the full job description here..." value={jobPosting} onChange={e => setJobPosting(e.target.value)} style={{ minHeight: 160 }} />
+                  <textarea placeholder="Paste the full job description here..." value={jobPosting} onChange={e => setJobPosting(e.target.value)} style={{minHeight:160}} />
                 </div>
               )}
-              <button className="btn btn-primary" onClick={runResume} disabled={resumeLoading || !resumeText.trim()} style={{ background: resumeLoading ? undefined : "#7c3aed" }}>
+              <button className="btn btn-primary" onClick={runResume} disabled={resumeLoading||!resumeText.trim()} style={{background:resumeLoading?undefined:"#7c3aed"}}>
                 {resumeLoading ? "Analyzing..." : "Run Resume 1·3·1"}
               </button>
             </div>
@@ -367,65 +333,54 @@ export default function OneThreeOne() {
           </div>
         )}
 
-        {/* ── PROJECTS TAB ── */}
+        {/* PROJECTS TAB */}
         {tab === "projects" && (
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
               <div className="section-title">Projects</div>
               <button className="btn btn-primary" onClick={() => { setShowNewProject(true); setEditingProject(null); }}>+ New Project</button>
             </div>
-            {(showNewProject || editingProject) && (
-              <ProjectForm
-                initial={editingProject}
-                onSave={(p) => {
-                  if (editingProject) {
-                    setProjects(ps => ps.map(x => x.id === p.id ? p : x));
-                    setAuditLog(a => addAudit(a, "project", "Project updated", p.name));
-                  } else {
-                    setProjects(ps => [...ps, p]);
-                    setAuditLog(a => addAudit(a, "project", "Project created", p.name));
-                  }
-                  setShowNewProject(false);
-                  setEditingProject(null);
+            {(showNewProject||editingProject) && (
+              <ProjectForm initial={editingProject}
+                onSave={p => {
+                  if (editingProject) { setProjects(ps => ps.map(x => x.id===p.id?p:x)); setAuditLog(a => addAudit(a,"project","Project updated",p.name)); }
+                  else { setProjects(ps => [...ps,p]); setAuditLog(a => addAudit(a,"project","Project created",p.name)); }
+                  setShowNewProject(false); setEditingProject(null);
                 }}
                 onCancel={() => { setShowNewProject(false); setEditingProject(null); }}
               />
             )}
-            {projects.length === 0 && !showNewProject ? (
-              <div className="empty">No projects yet. Create your first one above.</div>
-            ) : projects.map(p => (
-              <div key={p.id} className="project-item" style={{ cursor: "default" }}>
+            {projects.length===0&&!showNewProject ? <div className="empty">No projects yet. Create your first one above.</div>
+            : projects.map(p => (
+              <div key={p.id} className="project-item" style={{cursor:"default"}}>
                 <div>
                   <div className="project-title">{p.name}</div>
                   <div className="project-meta">Claude {p.claudeWeight}% · GPT {p.gptWeight}% · Gemini {p.geminiWeight}%</div>
-                  {p.description && <div className="project-meta" style={{ marginTop: 4, color: "#9090a8" }}>{p.description}</div>}
+                  {p.description && <div className="project-meta" style={{marginTop:4,color:"#9090a8"}}>{p.description}</div>}
                 </div>
                 <div className="project-actions">
-                  <button className="btn btn-ghost" style={{ padding: "6px 14px", fontSize: 13 }} onClick={() => { setEditingProject(p); setShowNewProject(false); }}>Edit</button>
-                  <button className="btn btn-danger" style={{ padding: "6px 14px", fontSize: 13 }}
-                    onClick={() => { if (confirm(`Delete "${p.name}"?`)) { setProjects(ps => ps.filter(x => x.id !== p.id)); if (selectedProject?.id === p.id) setSelectedProject(null); setAuditLog(a => addAudit(a, "project", "Project deleted", p.name)); } }}>Delete</button>
+                  <button className="btn btn-ghost" style={{padding:"6px 14px",fontSize:13}} onClick={() => { setEditingProject(p); setShowNewProject(false); }}>Edit</button>
+                  <button className="btn btn-danger" style={{padding:"6px 14px",fontSize:13}}
+                    onClick={() => { if(confirm(`Delete "${p.name}"?`)) { setProjects(ps => ps.filter(x => x.id!==p.id)); if(selectedProject?.id===p.id) setSelectedProject(null); setAuditLog(a => addAudit(a,"project","Project deleted",p.name)); } }}>Delete</button>
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* ── AUDIT LOG TAB ── */}
+        {/* AUDIT LOG TAB */}
         {tab === "audit" && (
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
               <div className="section-title">Audit Log</div>
-              <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => { if (confirm("Clear audit log?")) setAuditLog([]); }}>Clear Log</button>
+              <button className="btn btn-ghost" style={{fontSize:12}} onClick={() => { if(confirm("Clear audit log?")) setAuditLog([]); }}>Clear Log</button>
             </div>
-            <div className="philosophy" style={{ marginBottom: 24 }}>
-              <div className="philosophy-mark" style={{ fontSize: 20 }}>↩</div>
-              <div className="philosophy-text">
-                <strong>Every action is recorded.</strong> If something didn't turn out right, trace it back here. Understand what you did, adjust, and move forward.
-              </div>
+            <div className="philosophy" style={{marginBottom:24}}>
+              <div className="philosophy-mark" style={{fontSize:20}}>↩</div>
+              <div className="philosophy-text"><strong>Every action is recorded.</strong> If something didn&apos;t turn out right, trace it back here. Understand what you did, adjust, and move forward.</div>
             </div>
-            {auditLog.length === 0 ? (
-              <div className="empty">No activity yet. Run a synthesis to start the log.</div>
-            ) : auditLog.map(entry => (
+            {auditLog.length===0 ? <div className="empty">No activity yet. Run a synthesis to start the log.</div>
+            : auditLog.map(entry => (
               <div key={entry.id} className={`audit-entry audit-type-${entry.type}`}>
                 <div className="audit-time">{entry.time}</div>
                 <div className="audit-action">{entry.action}</div>
@@ -435,64 +390,48 @@ export default function OneThreeOne() {
           </div>
         )}
 
-        {/* ── SETTINGS TAB ── */}
+        {/* SETTINGS TAB */}
         {tab === "settings" && (
           <div>
-            <div className="philosophy" style={{ borderColor: "#1e3a5f" }}>
-              <div className="philosophy-mark" style={{ fontSize: 20 }}>⚙</div>
-              <div className="philosophy-text">
-                <strong>Bring your own keys.</strong> Your API keys are stored locally on your device only — never sent to our servers. Each model bills directly to your account.
-              </div>
+            <div className="philosophy" style={{borderColor:"#1e3a5f"}}>
+              <div className="philosophy-mark" style={{fontSize:20}}>⚙</div>
+              <div className="philosophy-text"><strong>Bring your own keys.</strong> Your API keys are stored locally on your device only — never sent to our servers. Each model bills directly to your account.</div>
             </div>
-
             <div className="card">
               <div className="card-label">API Keys</div>
-
               {MODELS.map(m => (
                 <div className="settings-model-card" key={m.id}>
                   <div className="settings-model-header">
                     <div>
-                      <div className="settings-model-name" style={{ color: m.color }}>{m.label}</div>
+                      <div className="settings-model-name" style={{color:m.color}}>{m.label}</div>
                       <div className="settings-model-role">{m.role}</div>
                     </div>
-                    <span className={`badge ${keys[m.id] ? "badge-green" : "badge-red"}`}>
-                      {keys[m.id] ? "KEY SET" : "NOT SET"}
-                    </span>
+                    <span className={`badge ${keys[m.id]?"badge-green":"badge-red"}`}>{keys[m.id]?"KEY SET":"NOT SET"}</span>
                   </div>
                   <div className="key-input-row">
-                    <input
-                      type={showKeys[m.id] ? "text" : "password"}
-                      placeholder={m.placeholder}
-                      value={keys[m.id]}
-                      onChange={e => setKeys(k => ({ ...k, [m.id]: e.target.value }))}
-                    />
-                    <button className="btn btn-ghost" style={{ padding: "10px 14px", fontSize: 12, whiteSpace: "nowrap" }}
-                      onClick={() => setShowKeys(s => ({ ...s, [m.id]: !s[m.id] }))}>
-                      {showKeys[m.id] ? "Hide" : "Show"}
+                    <input type={showKeys[m.id]?"text":"password"} placeholder={m.placeholder} value={keys[m.id]}
+                      onChange={e => setKeys(k => ({...k,[m.id]:e.target.value}))} />
+                    <button className="btn btn-ghost" style={{padding:"10px 14px",fontSize:12,whiteSpace:"nowrap"}}
+                      onClick={() => setShowKeys(s => ({...s,[m.id]:!s[m.id]}))}>
+                      {showKeys[m.id]?"Hide":"Show"}
                     </button>
                   </div>
-                  <a href={m.link} target="_blank" rel="noopener noreferrer" className="key-link">
-                    {m.linkLabel} ↗
-                  </a>
+                  <a href={m.link} target="_blank" rel="noopener noreferrer" className="key-link">{m.linkLabel} ↗</a>
                 </div>
               ))}
-
               <hr className="divider" />
-
               <div className="btn-row">
                 <button className="btn btn-primary" onClick={saveKeys}>Save Keys</button>
                 <button className="btn btn-danger" onClick={clearAllKeys}>Clear All Keys</button>
               </div>
-
               {settingsSaved && <div className="success-box">✓ Keys saved to your device.</div>}
             </div>
-
             <div className="card">
               <div className="card-label">About Your Keys</div>
-              <div style={{ fontSize: 13, color: "#9090a8", lineHeight: 1.7 }}>
-                <p style={{ marginBottom: 10 }}>Keys are stored in your browser&apos;s local storage — the same place your projects and audit log live. They never leave your device.</p>
-                <p style={{ marginBottom: 10 }}>If you&apos;re using the iOS app, keys persist between sessions in the WKWebView local storage on your phone.</p>
-                <p>Each provider charges per token used. Claude and GPT-4o cost roughly $0.01–0.05 per run depending on length. Gemini Flash is significantly cheaper.</p>
+              <div style={{fontSize:13,color:"#9090a8",lineHeight:1.7}}>
+                <p style={{marginBottom:10}}>Keys are stored in your browser&apos;s local storage — the same place your projects and audit log live. They never leave your device.</p>
+                <p style={{marginBottom:10}}>If you&apos;re using the iOS app, keys persist between sessions in the WKWebView local storage on your phone.</p>
+                <p>Each provider charges per token used. Claude and GPT-4o cost roughly $0.01–0.05 per run. Gemini Flash is significantly cheaper.</p>
               </div>
             </div>
           </div>
@@ -504,22 +443,22 @@ export default function OneThreeOne() {
 }
 
 function ProjectForm({ initial, onSave, onCancel }) {
-  const [name, setName] = useState(initial?.name || "");
-  const [description, setDescription] = useState(initial?.description || "");
-  const [systemPrompt, setSystemPrompt] = useState(initial?.systemPrompt || "");
-  const [claudeWeight, setClaudeWeight] = useState(initial?.claudeWeight ?? 40);
-  const [gptWeight, setGptWeight] = useState(initial?.gptWeight ?? 35);
-  const [geminiWeight, setGeminiWeight] = useState(initial?.geminiWeight ?? 25);
-  const total = claudeWeight + gptWeight + geminiWeight;
+  const [name, setName] = useState(initial?.name||"");
+  const [description, setDescription] = useState(initial?.description||"");
+  const [systemPrompt, setSystemPrompt] = useState(initial?.systemPrompt||"");
+  const [claudeWeight, setClaudeWeight] = useState(initial?.claudeWeight??40);
+  const [gptWeight, setGptWeight] = useState(initial?.gptWeight??35);
+  const [geminiWeight, setGeminiWeight] = useState(initial?.geminiWeight??25);
+  const total = claudeWeight+gptWeight+geminiWeight;
 
   function save() {
     if (!name.trim()) { alert("Project needs a name."); return; }
-    onSave({ id: initial?.id || Date.now(), name: name.trim(), description: description.trim(), systemPrompt: systemPrompt.trim(), claudeWeight, gptWeight, geminiWeight, createdAt: initial?.createdAt || new Date().toISOString() });
+    onSave({ id:initial?.id||Date.now(), name:name.trim(), description:description.trim(), systemPrompt:systemPrompt.trim(), claudeWeight, gptWeight, geminiWeight, createdAt:initial?.createdAt||new Date().toISOString() });
   }
 
   return (
-    <div className="card" style={{ border: "1px solid #3b82f6" }}>
-      <div className="card-label">{initial ? "Edit Project" : "New Project"}</div>
+    <div className="card" style={{border:"1px solid #3b82f6"}}>
+      <div className="card-label">{initial?"Edit Project":"New Project"}</div>
       <div className="form-row">
         <label>Project Name</label>
         <input type="text" placeholder="e.g. Screenwriting, Marketing Copy..." value={name} onChange={e => setName(e.target.value)} />
@@ -530,27 +469,27 @@ function ProjectForm({ initial, onSave, onCancel }) {
       </div>
       <div className="form-row">
         <label>System Prompt (optional)</label>
-        <textarea placeholder="e.g. You are helping a film producer develop ideas. Be concise, creative, and grounded." value={systemPrompt} onChange={e => setSystemPrompt(e.target.value)} style={{ minHeight: 70 }} />
+        <textarea placeholder="e.g. You are helping a film producer develop ideas. Be concise, creative, and grounded." value={systemPrompt} onChange={e => setSystemPrompt(e.target.value)} style={{minHeight:70}} />
       </div>
-      <div className="card-label" style={{ marginTop: 8 }}>Model Weights</div>
+      <div className="card-label" style={{marginTop:8}}>Model Weights</div>
       <div className="models-grid">
         {[
-          { label: "Claude", val: claudeWeight, set: setClaudeWeight, color: "#f59e0b" },
-          { label: "GPT-4o", val: gptWeight, set: setGptWeight, color: "#22c55e" },
-          { label: "Gemini", val: geminiWeight, set: setGeminiWeight, color: "#a78bfa" }
-        ].map(({ label, val, set, color }) => (
+          {label:"Claude",val:claudeWeight,set:setClaudeWeight,color:"#f59e0b"},
+          {label:"GPT-4o",val:gptWeight,set:setGptWeight,color:"#22c55e"},
+          {label:"Gemini",val:geminiWeight,set:setGeminiWeight,color:"#a78bfa"}
+        ].map(({label,val,set,color}) => (
           <div className="model-block" key={label}>
             <div className="model-name">{label}</div>
-            <div className="model-weight" style={{ color }}>{val}<span>%</span></div>
+            <div className="model-weight" style={{color}}>{val}<span>%</span></div>
             <input type="range" min={0} max={100} step={5} value={val} onChange={e => set(Number(e.target.value))} />
           </div>
         ))}
       </div>
-      <div className={`weight-total ${total === 100 ? "ok" : "off"}`}>
-        Total: {total}% {total !== 100 ? `(${total > 100 ? "reduce" : "increase"} by ${Math.abs(100 - total)}%)` : "✓ Good to go"}
+      <div className={`weight-total ${total===100?"ok":"off"}`}>
+        Total: {total}% {total!==100?`(${total>100?"reduce":"increase"} by ${Math.abs(100-total)}%)`:"✓ Good to go"}
       </div>
       <div className="btn-row">
-        <button className="btn btn-primary" onClick={save} disabled={total === 0}>Save Project</button>
+        <button className="btn btn-primary" onClick={save} disabled={total===0}>Save Project</button>
         <button className="btn btn-ghost" onClick={onCancel}>Cancel</button>
       </div>
     </div>
