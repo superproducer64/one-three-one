@@ -1,12 +1,10 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-
 export default function WelcomeModal() {
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState(0);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const seen = localStorage.getItem('131_onboarding_seen');
     if (!seen) setVisible(true);
   }, []);
@@ -16,6 +14,8 @@ export default function WelcomeModal() {
     setVisible(false);
   };
 
+  if (!mounted) return null;
+  if (!visible) return null;
   if (!visible) return null;
 
   return (
