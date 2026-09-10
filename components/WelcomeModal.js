@@ -1,3 +1,7 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+
 export default function WelcomeModal() {
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState(0);
@@ -16,20 +20,16 @@ export default function WelcomeModal() {
 
   if (!mounted) return null;
   if (!visible) return null;
-  if (!visible) return null;
 
   return (
     <div style={styles.overlay}>
       <div style={styles.modal}>
 
-        {/* Close */}
         <button style={styles.closeBtn} onClick={close} aria-label="Close">✕</button>
 
-        {/* Header */}
         <div style={styles.logo}>1·3·1</div>
         <div style={styles.tagline}>Three models. One output. No overthinking.</div>
 
-        {/* Dots — now 4 */}
         <div style={styles.dotsRow}>
           {[0,1,2,3].map(i => (
             <div key={i} style={{...styles.dot, ...(i === step ? styles.dotActive : {})}} />
@@ -109,7 +109,6 @@ export default function WelcomeModal() {
             <div style={styles.body}>
               1·3·1 runs on your own API keys — stored only on your device, never on our servers. Each provider has a free tier to get started.
             </div>
-
             {[
               { label: 'Claude', color: '#5599dd', bg: '#0d1a2e', border: '#1a4a7a', url: 'https://console.anthropic.com/settings/keys', linkLabel: 'console.anthropic.com' },
               { label: 'GPT-4o', color: '#44bb77', bg: '#0d2218', border: '#1a6a3a', url: 'https://platform.openai.com/api-keys', linkLabel: 'platform.openai.com' },
@@ -122,11 +121,9 @@ export default function WelcomeModal() {
                 </a>
               </div>
             ))}
-
             <div style={{...styles.body, marginTop: '1rem', marginBottom: '0.5rem'}}>
               Add them in the <span style={styles.emphasis}>Settings tab</span> after you close this. You&apos;re all set.
             </div>
-
             <div style={styles.btnRow}>
               <button style={styles.btnSecondary} onClick={() => setStep(2)}>Back</button>
               <button style={styles.btnPrimary} onClick={close}>Let&apos;s go →</button>
