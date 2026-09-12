@@ -7,7 +7,7 @@ const CSS = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #0a0a0f; color: #e2e2e8; font-family: 'Space Grotesk', sans-serif; min-height: 100vh; }
   .app { max-width: 900px; margin: 0 auto; padding: 0 20px 80px; }
-  .header { text-align: center; margin-bottom: 48px; padding-top: calc(env(safe-area-inset-top, 20px) + 48px); cursor: pointer; user-select: none; }
+  .header { text-align: center; margin-bottom: 48px; padding-top: calc(env(safe-area-inset-top, 20px) + 48px); cursor: pointer; user-select: none; -webkit-user-select: none; }
   .logo { font-family: 'JetBrains Mono', monospace; font-size: 52px; font-weight: 500; letter-spacing: -2px; color: #fff; line-height: 1; }
   .logo span { color: #3b82f6; }
   .tagline { font-size: 13px; color: #555568; letter-spacing: 3px; text-transform: uppercase; margin-top: 8px; font-family: 'JetBrains Mono', monospace; }
@@ -18,10 +18,9 @@ const CSS = `
   .card { background: #13131a; border: 1px solid #1e1e2e; border-radius: 12px; padding: 24px; margin-bottom: 16px; }
   .card-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #3b82f6; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; }
   label { display: block; font-size: 13px; color: #9090a8; margin-bottom: 6px; font-weight: 500; }
-input[type="text"], input[type="password"], textarea, select { width: 100%; background: #0a0a0f; border: 1px solid #1e1e2e; border-radius: 8px; color: #e2e2e8; font-family: 'Space Grotesk', sans-serif; font-size: 14px; padding: 10px 14px; outline: none; transition: border-color 0.15s; -webkit-user-select: text; user-select: text; -webkit-appearance: none; }
-textarea { resize: none; min-height: 100px; -webkit-user-select: text; user-select: text; }
+  input[type="text"], input[type="password"], textarea, select { width: 100%; background: #0a0a0f; border: 1px solid #1e1e2e; border-radius: 8px; color: #e2e2e8; font-family: 'Space Grotesk', sans-serif; font-size: 16px; padding: 10px 14px; outline: none; transition: border-color 0.15s; -webkit-user-select: text; user-select: text; -webkit-appearance: none; appearance: none; }
   input[type="text"]:focus, input[type="password"]:focus, textarea:focus { border-color: #3b82f6; }
-  textarea { resize: vertical; min-height: 100px; }
+  textarea { resize: none; min-height: 100px; -webkit-user-select: text; user-select: text; line-height: 1.5; }
   .form-row { margin-bottom: 16px; }
   .models-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 8px; }
   .model-block { background: #0a0a0f; border: 1px solid #1e1e2e; border-radius: 10px; padding: 16px; }
@@ -47,7 +46,7 @@ textarea { resize: none; min-height: 100px; -webkit-user-select: text; user-sele
   .project-title { font-weight: 600; font-size: 15px; }
   .project-meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #555568; margin-top: 3px; }
   .project-actions { display: flex; gap: 8px; }
-  .output-box { background: #0a0a0f; border: 1px solid #f59e0b44; border-radius: 10px; padding: 20px; font-size: 15px; line-height: 1.7; color: #f0e6c8; white-space: pre-wrap; min-height: 120px; }
+  .output-box { background: #0a0a0f; border: 1px solid #f59e0b44; border-radius: 10px; padding: 20px; font-size: 15px; line-height: 1.7; color: #f0e6c8; white-space: pre-wrap; min-height: 120px; -webkit-user-select: text; user-select: text; }
   .output-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #f59e0b; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
   .models-used { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #555568; margin-bottom: 12px; }
   .loader { display: flex; align-items: center; gap: 10px; color: #555568; font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 20px 0; }
@@ -81,7 +80,7 @@ textarea { resize: none; min-height: 100px; -webkit-user-select: text; user-sele
   .mode-btn { padding: 8px 16px; border-radius: 8px; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid #1e1e2e; background: transparent; color: #9090a8; transition: all 0.15s; }
   .mode-btn:hover { border-color: #a78bfa; color: #e2e2e8; }
   .mode-btn.active { background: #1a1030; border-color: #a78bfa; color: #a78bfa; }
-  .resume-output-box { background: #0a0a0f; border: 1px solid #a78bfa44; border-radius: 10px; padding: 20px; font-size: 15px; line-height: 1.8; color: #ede8f8; white-space: pre-wrap; min-height: 200px; }
+  .resume-output-box { background: #0a0a0f; border: 1px solid #a78bfa44; border-radius: 10px; padding: 20px; font-size: 15px; line-height: 1.8; color: #ede8f8; white-space: pre-wrap; min-height: 200px; -webkit-user-select: text; user-select: text; }
   .resume-output-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #a78bfa; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
   .key-input-row { display: flex; gap: 8px; align-items: center; }
   .key-input-row input { flex: 1; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
@@ -132,6 +131,7 @@ export default function OneThreeOne() {
   const [logoTaps, setLogoTaps] = useState(0);
   const [showToast, setShowToast] = useState(false);
 
+  // Load from localStorage client-side only — fixes SSR hydration error
   useEffect(() => {
     try {
       const p = localStorage.getItem("o31_projects");
@@ -286,7 +286,14 @@ export default function OneThreeOne() {
               <div className="card">
                 <div className="card-label">Your Prompt</div>
                 <div className="form-row">
-                  <textarea placeholder="Enter your prompt here..." value={prompt} onChange={e => setPrompt(e.target.value)} />
+                  <textarea
+                    placeholder="Enter your prompt here..."
+                    value={prompt}
+                    onChange={e => setPrompt(e.target.value)}
+                    autoComplete="off"
+                    autoCorrect="on"
+                    spellCheck="true"
+                  />
                 </div>
                 <button className="btn btn-primary" onClick={runSynthesis} disabled={loading||!prompt.trim()}>
                   {loading ? "Synthesizing..." : "Run 1·3·1"}
@@ -325,12 +332,12 @@ export default function OneThreeOne() {
               </div>
               <div className="form-row">
                 <label>Paste Your Resume</label>
-                <textarea placeholder="Paste your full resume here..." value={resumeText} onChange={e => setResumeText(e.target.value)} style={{minHeight:200}} />
+                <textarea placeholder="Paste your full resume here..." value={resumeText} onChange={e => setResumeText(e.target.value)} style={{minHeight:200}} autoComplete="off" />
               </div>
               {resumeMode !== "polish" && (
                 <div className="form-row">
                   <label>Paste Job Posting</label>
-                  <textarea placeholder="Paste the full job description here..." value={jobPosting} onChange={e => setJobPosting(e.target.value)} style={{minHeight:160}} />
+                  <textarea placeholder="Paste the full job description here..." value={jobPosting} onChange={e => setJobPosting(e.target.value)} style={{minHeight:160}} autoComplete="off" />
                 </div>
               )}
               <button className="btn btn-primary" onClick={runResume} disabled={resumeLoading||!resumeText.trim()} style={{background:resumeLoading?undefined:"#7c3aed"}}>
@@ -429,7 +436,8 @@ export default function OneThreeOne() {
                   </div>
                   <div className="key-input-row">
                     <input type={showKeys[m.id]?"text":"password"} placeholder={m.placeholder} value={keys[m.id]}
-                      onChange={e => setKeys(k => ({...k,[m.id]:e.target.value}))} />
+                      onChange={e => setKeys(k => ({...k,[m.id]:e.target.value}))}
+                      autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck="false" />
                     <button className="btn btn-ghost" style={{padding:"10px 14px",fontSize:12,whiteSpace:"nowrap"}}
                       onClick={() => setShowKeys(s => ({...s,[m.id]:!s[m.id]}))}>
                       {showKeys[m.id]?"Hide":"Show"}
@@ -480,15 +488,15 @@ function ProjectForm({ initial, onSave, onCancel }) {
       <div className="card-label">{initial?"Edit Project":"New Project"}</div>
       <div className="form-row">
         <label>Project Name</label>
-        <input type="text" placeholder="e.g. Screenwriting, Marketing Copy..." value={name} onChange={e => setName(e.target.value)} />
+        <input type="text" placeholder="e.g. Screenwriting, Marketing Copy..." value={name} onChange={e => setName(e.target.value)} autoComplete="off" autoCorrect="on" />
       </div>
       <div className="form-row">
         <label>Description (optional)</label>
-        <input type="text" placeholder="What are you using this for?" value={description} onChange={e => setDescription(e.target.value)} />
+        <input type="text" placeholder="What are you using this for?" value={description} onChange={e => setDescription(e.target.value)} autoComplete="off" autoCorrect="on" />
       </div>
       <div className="form-row">
         <label>System Prompt (optional)</label>
-        <textarea placeholder="e.g. You are helping a film producer develop ideas. Be concise, creative, and grounded." value={systemPrompt} onChange={e => setSystemPrompt(e.target.value)} style={{minHeight:70}} />
+        <textarea placeholder="e.g. You are helping a film producer develop ideas. Be concise, creative, and grounded." value={systemPrompt} onChange={e => setSystemPrompt(e.target.value)} style={{minHeight:70}} autoComplete="off" />
       </div>
       <div className="card-label" style={{marginTop:8}}>Model Weights</div>
       <div className="models-grid">
