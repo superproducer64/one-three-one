@@ -1,524 +1,61 @@
-"use client";
-import { useState, useEffect } from "react";
-import WelcomeModal from "@/components/WelcomeModal";
+import SwiftUI
+import WebKit
 
-const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0a0a0f; color: #e2e2e8; font-family: 'Space Grotesk', sans-serif; min-height: 100vh; }
-  .app { max-width: 900px; margin: 0 auto; padding: 0 20px 80px; }
-  .header { text-align: center; margin-bottom: 48px; padding-top: calc(env(safe-area-inset-top, 20px) + 48px); cursor: pointer; user-select: none; -webkit-user-select: none; }
-  .logo { font-family: 'JetBrains Mono', monospace; font-size: 52px; font-weight: 500; letter-spacing: -2px; color: #fff; line-height: 1; }
-  .logo span { color: #3b82f6; }
-  .tagline { font-size: 13px; color: #555568; letter-spacing: 3px; text-transform: uppercase; margin-top: 8px; font-family: 'JetBrains Mono', monospace; }
-  .tabs { display: flex; gap: 2px; background: #13131a; border-radius: 10px; padding: 4px; margin-bottom: 32px; border: 1px solid #1e1e2e; }
-  .tab { flex: 1; padding: 10px; background: transparent; border: none; color: #555568; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; border-radius: 7px; transition: all 0.15s; }
-  .tab:hover { color: #9090a8; }
-  .tab.active { background: #1e1e2e; color: #e2e2e8; }
-  .card { background: #13131a; border: 1px solid #1e1e2e; border-radius: 12px; padding: 24px; margin-bottom: 16px; }
-  .card-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #3b82f6; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; }
-  label { display: block; font-size: 13px; color: #9090a8; margin-bottom: 6px; font-weight: 500; }
-  input[type="text"], input[type="password"], textarea, select { width: 100%; background: #0a0a0f; border: 1px solid #1e1e2e; border-radius: 8px; color: #e2e2e8; font-family: 'Space Grotesk', sans-serif; font-size: 16px; padding: 10px 14px; outline: none; transition: border-color 0.15s; -webkit-user-select: text; user-select: text; -webkit-appearance: none; appearance: none; }
-  input[type="text"]:focus, input[type="password"]:focus, textarea:focus { border-color: #3b82f6; }
-  textarea { resize: none; min-height: 100px; -webkit-user-select: text; user-select: text; line-height: 1.5; }
-  .form-row { margin-bottom: 16px; }
-  .models-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 8px; }
-  .model-block { background: #0a0a0f; border: 1px solid #1e1e2e; border-radius: 10px; padding: 16px; }
-  .model-name { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #9090a8; margin-bottom: 8px; }
-  .model-weight { font-size: 28px; font-weight: 600; color: #fff; line-height: 1; margin-bottom: 8px; }
-  .model-weight span { font-size: 16px; color: #555568; }
-  input[type="range"] { width: 100%; accent-color: #3b82f6; cursor: pointer; }
-  .weight-total { font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: right; margin-top: 8px; }
-  .weight-total.ok { color: #22c55e; }
-  .weight-total.off { color: #f59e0b; }
-  .btn { padding: 11px 22px; border-radius: 8px; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
-  .btn-primary { background: #3b82f6; color: #fff; }
-  .btn-primary:hover { background: #2563eb; }
-  .btn-primary:disabled { background: #1e3a5f; color: #555568; cursor: not-allowed; }
-  .btn-ghost { background: transparent; color: #9090a8; border: 1px solid #1e1e2e; }
-  .btn-ghost:hover { border-color: #3b82f6; color: #e2e2e8; }
-  .btn-danger { background: transparent; color: #ef4444; border: 1px solid #1e1e2e; }
-  .btn-danger:hover { border-color: #ef4444; }
-  .btn-row { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
-  .project-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; background: #0a0a0f; border: 1px solid #1e1e2e; border-radius: 10px; margin-bottom: 8px; cursor: pointer; transition: border-color 0.15s; }
-  .project-item:hover { border-color: #3b82f6; }
-  .project-item.selected { border-color: #3b82f6; background: #0d1829; }
-  .project-title { font-weight: 600; font-size: 15px; }
-  .project-meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #555568; margin-top: 3px; }
-  .project-actions { display: flex; gap: 8px; }
-  .output-box { background: #0a0a0f; border: 1px solid #f59e0b44; border-radius: 10px; padding: 20px; font-size: 15px; line-height: 1.7; color: #f0e6c8; white-space: pre-wrap; min-height: 120px; -webkit-user-select: text; user-select: text; }
-  .output-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #f59e0b; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
-  .models-used { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #555568; margin-bottom: 12px; }
-  .loader { display: flex; align-items: center; gap: 10px; color: #555568; font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 20px 0; }
-  .dot-pulse { display: flex; gap: 5px; }
-  .dot-pulse span { width: 6px; height: 6px; background: #3b82f6; border-radius: 50%; animation: pulse 1.2s ease-in-out infinite; }
-  .dot-pulse span:nth-child(2) { animation-delay: 0.2s; }
-  .dot-pulse span:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes pulse { 0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1); } }
-  .audit-entry { border-left: 2px solid #1e1e2e; padding: 10px 16px; margin-bottom: 8px; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
-  .audit-time { color: #3b82f6; margin-bottom: 3px; }
-  .audit-action { color: #9090a8; margin-bottom: 2px; }
-  .audit-detail { color: #555568; font-size: 11px; }
-  .audit-type-synthesis { border-color: #f59e0b; }
-  .audit-type-project { border-color: #22c55e; }
-  .audit-type-resume { border-color: #a78bfa; }
-  .audit-type-error { border-color: #ef4444; }
-  .audit-type-settings { border-color: #3b82f6; }
-  .philosophy { background: linear-gradient(135deg, #0d1829 0%, #13131a 100%); border: 1px solid #1e3a5f; border-radius: 12px; padding: 20px 24px; margin-bottom: 24px; display: flex; align-items: flex-start; gap: 16px; }
-  .philosophy-mark { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 700; color: #3b82f6; line-height: 1; flex-shrink: 0; }
-  .philosophy-text { font-size: 13px; color: #9090a8; line-height: 1.6; }
-  .philosophy-text strong { color: #e2e2e8; }
-  .empty { text-align: center; padding: 48px 24px; color: #555568; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
-  .section-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #e2e2e8; }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; }
-  .badge-blue { background: #1e3a5f; color: #3b82f6; }
-  .badge-green { background: #0d2818; color: #22c55e; }
-  .badge-red { background: #1a0a0a; color: #ef4444; }
-  .error-box { background: #1a0a0a; border: 1px solid #ef444444; border-radius: 10px; padding: 16px; color: #ef4444; font-family: 'JetBrains Mono', monospace; font-size: 13px; margin-top: 12px; }
-  .success-box { background: #0a1a0a; border: 1px solid #22c55e44; border-radius: 10px; padding: 16px; color: #22c55e; font-family: 'JetBrains Mono', monospace; font-size: 13px; margin-top: 12px; }
-  .mode-selector { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
-  .mode-btn { padding: 8px 16px; border-radius: 8px; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid #1e1e2e; background: transparent; color: #9090a8; transition: all 0.15s; }
-  .mode-btn:hover { border-color: #a78bfa; color: #e2e2e8; }
-  .mode-btn.active { background: #1a1030; border-color: #a78bfa; color: #a78bfa; }
-  .resume-output-box { background: #0a0a0f; border: 1px solid #a78bfa44; border-radius: 10px; padding: 20px; font-size: 15px; line-height: 1.8; color: #ede8f8; white-space: pre-wrap; min-height: 200px; -webkit-user-select: text; user-select: text; }
-  .resume-output-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #a78bfa; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
-  .key-input-row { display: flex; gap: 8px; align-items: center; }
-  .key-input-row input { flex: 1; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
-  .key-link { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #3b82f6; text-decoration: none; margin-top: 4px; display: inline-block; }
-  .key-link:hover { text-decoration: underline; }
-  .settings-model-card { background: #0a0a0f; border: 1px solid #1e1e2e; border-radius: 10px; padding: 20px; margin-bottom: 12px; }
-  .settings-model-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-  .settings-model-name { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; }
-  .settings-model-role { font-size: 12px; color: #555568; margin-top: 2px; }
-  .divider { border: none; border-top: 1px solid #1e1e2e; margin: 20px 0; }
-  .reset-toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); background: #1e1e2e; color: #3b82f6; font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 8px 18px; border-radius: 20px; border: 1px solid #3b82f6; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
-  .reset-toast.show { opacity: 1; }
-`;
-
-const ts = () => new Date().toLocaleTimeString("en-US", { hour12: false });
-const tsISO = () => new Date().toISOString();
-function addAudit(log, type, action, detail = "") {
-  return [{ id: Date.now(), time: ts(), isoTime: tsISO(), type, action, detail }, ...log].slice(0, 200);
-}
-
-const MODELS = [
-  { id: "claude", label: "Claude", role: "Depth & nuance", color: "#f59e0b", placeholder: "sk-ant-...", link: "https://console.anthropic.com/settings/keys", linkLabel: "Get key → console.anthropic.com" },
-  { id: "gpt", label: "GPT-4o", role: "Structure & clarity", color: "#22c55e", placeholder: "sk-...", link: "https://platform.openai.com/api-keys", linkLabel: "Get key → platform.openai.com" },
-  { id: "gemini", label: "Gemini", role: "Breadth & research", color: "#a78bfa", placeholder: "AIza...", link: "https://aistudio.google.com/app/apikey", linkLabel: "Get key → aistudio.google.com" },
-];
-
-export default function OneThreeOne() {
-  const [tab, setTab] = useState("run");
-  const [projects, setProjects] = useState([]);
-  const [auditLog, setAuditLog] = useState([]);
-  const [selectedProject, setSelectedProject] = useState(null);
-  const [prompt, setPrompt] = useState("");
-  const [output, setOutput] = useState("");
-  const [modelsUsed, setModelsUsed] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [editingProject, setEditingProject] = useState(null);
-  const [showNewProject, setShowNewProject] = useState(false);
-  const [resumeText, setResumeText] = useState("");
-  const [jobPosting, setJobPosting] = useState("");
-  const [resumeMode, setResumeMode] = useState("both");
-  const [resumeOutput, setResumeOutput] = useState("");
-  const [resumeLoading, setResumeLoading] = useState(false);
-  const [resumeError, setResumeError] = useState("");
-  const [keys, setKeys] = useState({ claude: "", gpt: "", gemini: "" });
-  const [showKeys, setShowKeys] = useState({ claude: false, gpt: false, gemini: false });
-  const [settingsSaved, setSettingsSaved] = useState(false);
-  const [logoTaps, setLogoTaps] = useState(0);
-  const [showToast, setShowToast] = useState(false);
-
-  // Load from localStorage client-side only — fixes SSR hydration error
-  useEffect(() => {
-    try {
-      const p = localStorage.getItem("o31_projects");
-      const a = localStorage.getItem("o31_audit");
-      if (p) setProjects(JSON.parse(p));
-      if (a) setAuditLog(JSON.parse(a));
-      setKeys({
-        claude: localStorage.getItem("o31_key_claude") || "",
-        gpt: localStorage.getItem("o31_key_gpt") || "",
-        gemini: localStorage.getItem("o31_key_gemini") || "",
-      });
-    } catch {}
-  }, []);
-
-  useEffect(() => { localStorage.setItem("o31_projects", JSON.stringify(projects)); }, [projects]);
-  useEffect(() => { localStorage.setItem("o31_audit", JSON.stringify(auditLog)); }, [auditLog]);
-
-  // Hidden reset — tap logo 5 times to reset onboarding only (keys stay)
-  function handleLogoTap() {
-    const next = logoTaps + 1;
-    setLogoTaps(next);
-    if (next >= 5) {
-      localStorage.removeItem("131_onboarding_seen");
-      setLogoTaps(0);
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 2500);
-      setTimeout(() => window.location.reload(), 500);
+struct ContentView: View {
+    var body: some View {
+        WebView(url: URL(string: "https://one-three-one.vercel.app")!)
+            .ignoresSafeArea()
     }
-  }
-
-  function saveKeys() {
-    try {
-      if (keys.claude) localStorage.setItem("o31_key_claude", keys.claude);
-      else localStorage.removeItem("o31_key_claude");
-      if (keys.gpt) localStorage.setItem("o31_key_gpt", keys.gpt);
-      else localStorage.removeItem("o31_key_gpt");
-      if (keys.gemini) localStorage.setItem("o31_key_gemini", keys.gemini);
-      else localStorage.removeItem("o31_key_gemini");
-      setSettingsSaved(true);
-      setAuditLog(a => addAudit(a, "settings", "API keys updated", `Claude: ${keys.claude ? "set" : "cleared"} · GPT: ${keys.gpt ? "set" : "cleared"} · Gemini: ${keys.gemini ? "set" : "cleared"}`));
-      setTimeout(() => setSettingsSaved(false), 3000);
-    } catch (e) { console.error("Failed to save keys", e); }
-  }
-
-  function clearAllKeys() {
-    if (!confirm("Clear all API keys?")) return;
-    setKeys({ claude: "", gpt: "", gemini: "" });
-    ["o31_key_claude", "o31_key_gpt", "o31_key_gemini"].forEach(k => localStorage.removeItem(k));
-    setAuditLog(a => addAudit(a, "settings", "All API keys cleared", ""));
-  }
-
-  async function runSynthesis() {
-    if (!selectedProject || !prompt.trim()) return;
-    setLoading(true); setOutput(""); setError(""); setModelsUsed([]);
-    const log1 = addAudit(auditLog, "synthesis", "Synthesis started", `Project: ${selectedProject.name} | Prompt: ${prompt.slice(0, 80)}...`);
-    setAuditLog(log1);
-    try {
-      const res = await fetch("/api/synthesize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt, systemPrompt: selectedProject.systemPrompt || "",
-          claudeWeight: selectedProject.claudeWeight, gptWeight: selectedProject.gptWeight, geminiWeight: selectedProject.geminiWeight,
-          ...(keys.claude && { claudeKey: keys.claude }),
-          ...(keys.gpt && { gptKey: keys.gpt }),
-          ...(keys.gemini && { geminiKey: keys.gemini }),
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
-      setOutput(data.output); setModelsUsed(data.modelsUsed || []);
-      setAuditLog(addAudit(log1, "synthesis", "Synthesis complete", `Models: ${(data.modelsUsed || []).join(", ")}`));
-    } catch (err) {
-      setError(err.message);
-      setAuditLog(addAudit(log1, "error", "Synthesis failed", err.message));
-    } finally { setLoading(false); }
-  }
-
-  async function runResume() {
-    if (!resumeText.trim()) return;
-    if (resumeMode !== "polish" && !jobPosting.trim()) { alert("Please paste the job posting."); return; }
-    setResumeLoading(true); setResumeOutput(""); setResumeError("");
-    const modeLabel = resumeMode === "polish" ? "Polish only" : resumeMode === "tailor" ? "Tailor to job" : "Polish + Tailor";
-    const log1 = addAudit(auditLog, "resume", "Resume run started", modeLabel);
-    setAuditLog(log1);
-    const systemPrompt = `You are an expert resume writer and career coach. Never fabricate experience. Enhance what exists.`;
-    let userPrompt = resumeMode === "polish"
-      ? `Polish and strengthen this resume. Return the complete improved resume.\n\nRESUME:\n${resumeText}`
-      : resumeMode === "tailor"
-      ? `Tailor this resume for the job posting. Return the complete tailored resume.\n\nRESUME:\n${resumeText}\n\nJOB POSTING:\n${jobPosting}`
-      : `Polish then tailor this resume for the job posting. Return the complete result.\n\nRESUME:\n${resumeText}\n\nJOB POSTING:\n${jobPosting}`;
-    try {
-      const res = await fetch("/api/synthesize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: userPrompt, systemPrompt, claudeWeight: 40, gptWeight: 35, geminiWeight: 25,
-          ...(keys.claude && { claudeKey: keys.claude }),
-          ...(keys.gpt && { gptKey: keys.gpt }),
-          ...(keys.gemini && { geminiKey: keys.gemini }),
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
-      setResumeOutput(data.output);
-      setAuditLog(addAudit(log1, "resume", "Resume complete", `Mode: ${modeLabel}`));
-    } catch (err) {
-      setResumeError(err.message);
-      setAuditLog(addAudit(log1, "error", "Resume failed", err.message));
-    } finally { setResumeLoading(false); }
-  }
-
-  return (
-    <>
-      <style>{CSS}</style>
-      <WelcomeModal />
-      <div className={`reset-toast ${showToast ? "show" : ""}`}>Onboarding reset ✓</div>
-      <div className="app">
-        <div className="header" onClick={handleLogoTap}>
-          <div className="logo">1<span>3</span>1</div>
-          <div className="tagline">Three Models · One Output · No Overthinking</div>
-        </div>
-
-        <div className="tabs">
-          {[["run","Run"],["resume","Resume"],["projects","Projects"],["audit","Audit Log"],["settings","Settings"]].map(([id,label]) => (
-            <button key={id} className={`tab ${tab===id?"active":""}`} onClick={() => setTab(id)}>{label}</button>
-          ))}
-        </div>
-
-        {/* RUN TAB */}
-        {tab === "run" && (
-          <div>
-            <div className="philosophy">
-              <div className="philosophy-mark">80</div>
-              <div className="philosophy-text"><strong>Eighty percent is a win.</strong> You will never make everyone happy — including yourself. Pick your output, move forward. Analysis paralysis is the enemy of done.</div>
-            </div>
-            <div className="card">
-              <div className="card-label">Select Project</div>
-              {projects.length === 0 ? <div className="empty">No projects yet. Create one in the Projects tab.</div>
-              : projects.map(p => (
-                <div key={p.id} className={`project-item ${selectedProject?.id===p.id?"selected":""}`}
-                  onClick={() => { setSelectedProject(p); setAuditLog(a => addAudit(a,"project","Project selected",p.name)); }}>
-                  <div>
-                    <div className="project-title">{p.name}</div>
-                    <div className="project-meta">Claude {p.claudeWeight}% · GPT {p.gptWeight}% · Gemini {p.geminiWeight}%</div>
-                  </div>
-                  {selectedProject?.id===p.id && <span className="badge badge-blue">ACTIVE</span>}
-                </div>
-              ))}
-            </div>
-            {selectedProject && (
-              <div className="card">
-                <div className="card-label">Your Prompt</div>
-                <div className="form-row">
-                  <textarea
-                    placeholder="Enter your prompt here..."
-                    value={prompt}
-                    onChange={e => setPrompt(e.target.value)}
-                    autoComplete="off"
-                    autoCorrect="on"
-                    spellCheck="true"
-                  />
-                </div>
-                <button className="btn btn-primary" onClick={runSynthesis} disabled={loading||!prompt.trim()}>
-                  {loading ? "Synthesizing..." : "Run 1·3·1"}
-                </button>
-              </div>
-            )}
-            {loading && <div className="loader"><div className="dot-pulse"><span/><span/><span/></div>Firing models simultaneously...</div>}
-            {error && <div className="error-box">Error: {error}</div>}
-            {output && !loading && (
-              <div className="card">
-                <div className="output-label">Synthesized Output</div>
-                {modelsUsed.length>0 && <div className="models-used">via {modelsUsed.join(" · ")}</div>}
-                <div className="output-box">{output}</div>
-                <div className="btn-row">
-                  <button className="btn btn-ghost" onClick={() => navigator.clipboard.writeText(output)}>Copy Output</button>
-                  <button className="btn btn-ghost" onClick={() => { setOutput(""); setPrompt(""); setError(""); }}>Clear</button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* RESUME TAB */}
-        {tab === "resume" && (
-          <div>
-            <div className="philosophy" style={{borderColor:"#2d1f5e"}}>
-              <div className="philosophy-mark" style={{color:"#a78bfa"}}>✦</div>
-              <div className="philosophy-text"><strong>Your credentials are the differentiator.</strong> Three models working together to position your education and experience exactly where it needs to be.</div>
-            </div>
-            <div className="card">
-              <div className="card-label">Mode</div>
-              <div className="mode-selector">
-                {[["polish","Polish Resume"],["tailor","Tailor to Job"],["both","Polish + Tailor"]].map(([id,label]) => (
-                  <button key={id} className={`mode-btn ${resumeMode===id?"active":""}`} onClick={() => setResumeMode(id)}>{label}</button>
-                ))}
-              </div>
-              <div className="form-row">
-                <label>Paste Your Resume</label>
-                <textarea placeholder="Paste your full resume here..." value={resumeText} onChange={e => setResumeText(e.target.value)} style={{minHeight:200}} autoComplete="off" />
-              </div>
-              {resumeMode !== "polish" && (
-                <div className="form-row">
-                  <label>Paste Job Posting</label>
-                  <textarea placeholder="Paste the full job description here..." value={jobPosting} onChange={e => setJobPosting(e.target.value)} style={{minHeight:160}} autoComplete="off" />
-                </div>
-              )}
-              <button className="btn btn-primary" onClick={runResume} disabled={resumeLoading||!resumeText.trim()} style={{background:resumeLoading?undefined:"#7c3aed"}}>
-                {resumeLoading ? "Analyzing..." : "Run Resume 1·3·1"}
-              </button>
-            </div>
-            {resumeLoading && <div className="loader"><div className="dot-pulse"><span/><span/><span/></div>Three models optimizing your resume...</div>}
-            {resumeError && <div className="error-box">Error: {resumeError}</div>}
-            {resumeOutput && !resumeLoading && (
-              <div className="card">
-                <div className="resume-output-label">Optimized Resume</div>
-                <div className="resume-output-box">{resumeOutput}</div>
-                <div className="btn-row">
-                  <button className="btn btn-ghost" onClick={() => navigator.clipboard.writeText(resumeOutput)}>Copy Resume</button>
-                  <button className="btn btn-ghost" onClick={() => { setResumeOutput(""); setResumeError(""); }}>Clear</button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* PROJECTS TAB */}
-        {tab === "projects" && (
-          <div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-              <div className="section-title">Projects</div>
-              <button className="btn btn-primary" onClick={() => { setShowNewProject(true); setEditingProject(null); }}>+ New Project</button>
-            </div>
-            {(showNewProject||editingProject) && (
-              <ProjectForm initial={editingProject}
-                onSave={p => {
-                  if (editingProject) { setProjects(ps => ps.map(x => x.id===p.id?p:x)); setAuditLog(a => addAudit(a,"project","Project updated",p.name)); }
-                  else { setProjects(ps => [...ps,p]); setAuditLog(a => addAudit(a,"project","Project created",p.name)); }
-                  setShowNewProject(false); setEditingProject(null);
-                }}
-                onCancel={() => { setShowNewProject(false); setEditingProject(null); }}
-              />
-            )}
-            {projects.length===0&&!showNewProject ? <div className="empty">No projects yet. Create your first one above.</div>
-            : projects.map(p => (
-              <div key={p.id} className="project-item" style={{cursor:"default"}}>
-                <div>
-                  <div className="project-title">{p.name}</div>
-                  <div className="project-meta">Claude {p.claudeWeight}% · GPT {p.gptWeight}% · Gemini {p.geminiWeight}%</div>
-                  {p.description && <div className="project-meta" style={{marginTop:4,color:"#9090a8"}}>{p.description}</div>}
-                </div>
-                <div className="project-actions">
-                  <button className="btn btn-ghost" style={{padding:"6px 14px",fontSize:13}} onClick={() => { setEditingProject(p); setShowNewProject(false); }}>Edit</button>
-                  <button className="btn btn-danger" style={{padding:"6px 14px",fontSize:13}}
-                    onClick={() => { if(confirm(`Delete "${p.name}"?`)) { setProjects(ps => ps.filter(x => x.id!==p.id)); if(selectedProject?.id===p.id) setSelectedProject(null); setAuditLog(a => addAudit(a,"project","Project deleted",p.name)); } }}>Delete</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* AUDIT LOG TAB */}
-        {tab === "audit" && (
-          <div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-              <div className="section-title">Audit Log</div>
-              <button className="btn btn-ghost" style={{fontSize:12}} onClick={() => { if(confirm("Clear audit log?")) setAuditLog([]); }}>Clear Log</button>
-            </div>
-            <div className="philosophy" style={{marginBottom:24}}>
-              <div className="philosophy-mark" style={{fontSize:20}}>↩</div>
-              <div className="philosophy-text"><strong>Every action is recorded.</strong> If something didn&apos;t turn out right, trace it back here. Understand what you did, adjust, and move forward.</div>
-            </div>
-            {auditLog.length===0 ? <div className="empty">No activity yet. Run a synthesis to start the log.</div>
-            : auditLog.map(entry => (
-              <div key={entry.id} className={`audit-entry audit-type-${entry.type}`}>
-                <div className="audit-time">{entry.time}</div>
-                <div className="audit-action">{entry.action}</div>
-                {entry.detail && <div className="audit-detail">{entry.detail}</div>}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* SETTINGS TAB */}
-        {tab === "settings" && (
-          <div>
-            <div className="philosophy" style={{borderColor:"#1e3a5f"}}>
-              <div className="philosophy-mark" style={{fontSize:20}}>⚙</div>
-              <div className="philosophy-text"><strong>Bring your own keys.</strong> Your API keys are stored locally on your device only — never sent to our servers. Each model bills directly to your account.</div>
-            </div>
-            <div className="card">
-              <div className="card-label">API Keys</div>
-              {MODELS.map(m => (
-                <div className="settings-model-card" key={m.id}>
-                  <div className="settings-model-header">
-                    <div>
-                      <div className="settings-model-name" style={{color:m.color}}>{m.label}</div>
-                      <div className="settings-model-role">{m.role}</div>
-                    </div>
-                    <span className={`badge ${keys[m.id]?"badge-green":"badge-red"}`}>{keys[m.id]?"KEY SET":"NOT SET"}</span>
-                  </div>
-                  <div className="key-input-row">
-                    <input type={showKeys[m.id]?"text":"password"} placeholder={m.placeholder} value={keys[m.id]}
-                      onChange={e => setKeys(k => ({...k,[m.id]:e.target.value}))}
-                      autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck="false" />
-                    <button className="btn btn-ghost" style={{padding:"10px 14px",fontSize:12,whiteSpace:"nowrap"}}
-                      onClick={() => setShowKeys(s => ({...s,[m.id]:!s[m.id]}))}>
-                      {showKeys[m.id]?"Hide":"Show"}
-                    </button>
-                  </div>
-                  <a href={m.link} target="_blank" rel="noopener noreferrer" className="key-link">{m.linkLabel} ↗</a>
-                </div>
-              ))}
-              <hr className="divider" />
-              <div className="btn-row">
-                <button className="btn btn-primary" onClick={saveKeys}>Save Keys</button>
-                <button className="btn btn-danger" onClick={clearAllKeys}>Clear All Keys</button>
-              </div>
-              {settingsSaved && <div className="success-box">✓ Keys saved to your device.</div>}
-            </div>
-            <div className="card">
-              <div className="card-label">About Your Keys</div>
-              <div style={{fontSize:13,color:"#9090a8",lineHeight:1.7}}>
-                <p style={{marginBottom:10}}>Keys are stored in your browser&apos;s local storage — never sent to our servers.</p>
-                <p style={{marginBottom:10}}>On iOS, keys persist between sessions in the WKWebView local storage on your phone.</p>
-                <p>Each provider charges per token. Claude and GPT-4o cost roughly $0.01–0.05 per run. Gemini Flash is significantly cheaper.</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-      </div>
-    </>
-  );
 }
 
-function ProjectForm({ initial, onSave, onCancel }) {
-  const [name, setName] = useState(initial?.name||"");
-  const [description, setDescription] = useState(initial?.description||"");
-  const [systemPrompt, setSystemPrompt] = useState(initial?.systemPrompt||"");
-  const [claudeWeight, setClaudeWeight] = useState(initial?.claudeWeight??40);
-  const [gptWeight, setGptWeight] = useState(initial?.gptWeight??35);
-  const [geminiWeight, setGeminiWeight] = useState(initial?.geminiWeight??25);
-  const total = claudeWeight+gptWeight+geminiWeight;
+struct WebView: UIViewRepresentable {
+    let url: URL
 
-  function save() {
-    if (!name.trim()) { alert("Project needs a name."); return; }
-    onSave({ id:initial?.id||Date.now(), name:name.trim(), description:description.trim(), systemPrompt:systemPrompt.trim(), claudeWeight, gptWeight, geminiWeight, createdAt:initial?.createdAt||new Date().toISOString() });
-  }
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
 
-  return (
-    <div className="card" style={{border:"1px solid #3b82f6"}}>
-      <div className="card-label">{initial?"Edit Project":"New Project"}</div>
-      <div className="form-row">
-        <label>Project Name</label>
-        <input type="text" placeholder="e.g. Screenwriting, Marketing Copy..." value={name} onChange={e => setName(e.target.value)} autoComplete="off" autoCorrect="on" />
-      </div>
-      <div className="form-row">
-        <label>Description (optional)</label>
-        <input type="text" placeholder="What are you using this for?" value={description} onChange={e => setDescription(e.target.value)} autoComplete="off" autoCorrect="on" />
-      </div>
-      <div className="form-row">
-        <label>System Prompt (optional)</label>
-        <textarea placeholder="e.g. You are helping a film producer develop ideas. Be concise, creative, and grounded." value={systemPrompt} onChange={e => setSystemPrompt(e.target.value)} style={{minHeight:70}} autoComplete="off" />
-      </div>
-      <div className="card-label" style={{marginTop:8}}>Model Weights</div>
-      <div className="models-grid">
-        {[
-          {label:"Claude",val:claudeWeight,set:setClaudeWeight,color:"#f59e0b"},
-          {label:"GPT-4o",val:gptWeight,set:setGptWeight,color:"#22c55e"},
-          {label:"Gemini",val:geminiWeight,set:setGeminiWeight,color:"#a78bfa"}
-        ].map(({label,val,set,color}) => (
-          <div className="model-block" key={label}>
-            <div className="model-name">{label}</div>
-            <div className="model-weight" style={{color}}>{val}<span>%</span></div>
-            <input type="range" min={0} max={100} step={5} value={val} onChange={e => set(Number(e.target.value))} />
-          </div>
-        ))}
-      </div>
-      <div className={`weight-total ${total===100?"ok":"off"}`}>
-        Total: {total}% {total!==100?`(${total>100?"reduce":"increase"} by ${Math.abs(100-total)}%)`:"✓ Good to go"}
-      </div>
-      <div className="btn-row">
-        <button className="btn btn-primary" onClick={save} disabled={total===0}>Save Project</button>
-        <button className="btn btn-ghost" onClick={onCancel}>Cancel</button>
-      </div>
-    </div>
-  );
+    func makeUIView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        config.allowsInlineMediaPlayback = true
+        config.preferences.javaScriptCanOpenWindowsAutomatically = true
+
+        let webView = WKWebView(frame: .zero, configuration: config)
+        webView.navigationDelegate = context.coordinator
+        webView.scrollView.bounces = false
+        webView.scrollView.keyboardDismissMode = .interactive
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
+
+        // Dark background to match app while loading
+        webView.backgroundColor = UIColor(red: 0.04, green: 0.04, blue: 0.06, alpha: 1)
+        webView.scrollView.backgroundColor = UIColor(red: 0.04, green: 0.04, blue: 0.06, alpha: 1)
+        webView.isOpaque = false
+
+        let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)
+        webView.load(request)
+        return webView
+    }
+
+    func updateUIView(_ webView: WKWebView, context: Context) {}
+
+    class Coordinator: NSObject, WKNavigationDelegate {
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            // Fix iOS text editing in WKWebView — enables proper keyboard + delete key
+            let js = """
+                document.addEventListener('touchstart', function(e) {
+                    var target = e.target;
+                    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+                        target.focus();
+                    }
+                }, true);
+            """
+            webView.evaluateJavaScript(js, completionHandler: nil)
+        }
+
+        func webView(_ webView: WKWebView,
+                     decidePolicyFor navigationAction: WKNavigationAction,
+                     decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+            decisionHandler(.allow)
+        }
+    }
 }
