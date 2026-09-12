@@ -7,7 +7,7 @@ const CSS = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #0a0a0f; color: #e2e2e8; font-family: 'Space Grotesk', sans-serif; min-height: 100vh; }
   .app { max-width: 900px; margin: 0 auto; padding: 0 20px 80px; }
-  .header { text-align: center; margin-bottom: 48px; padding-top: calc(env(safe-area-inset-top, 20px) + 48px); }
+  .header { text-align: center; margin-bottom: 48px; padding-top: calc(env(safe-area-inset-top, 20px) + 48px); cursor: pointer; user-select: none; }
   .logo { font-family: 'JetBrains Mono', monospace; font-size: 52px; font-weight: 500; letter-spacing: -2px; color: #fff; line-height: 1; }
   .logo span { color: #3b82f6; }
   .tagline { font-size: 13px; color: #555568; letter-spacing: 3px; text-transform: uppercase; margin-top: 8px; font-family: 'JetBrains Mono', monospace; }
@@ -91,6 +91,8 @@ const CSS = `
   .settings-model-name { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; }
   .settings-model-role { font-size: 12px; color: #555568; margin-top: 2px; }
   .divider { border: none; border-top: 1px solid #1e1e2e; margin: 20px 0; }
+  .reset-toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); background: #1e1e2e; color: #3b82f6; font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 8px 18px; border-radius: 20px; border: 1px solid #3b82f6; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
+  .reset-toast.show { opacity: 1; }
 `;
 
 const ts = () => new Date().toLocaleTimeString("en-US", { hour12: false });
@@ -126,8 +128,9 @@ export default function OneThreeOne() {
   const [keys, setKeys] = useState({ claude: "", gpt: "", gemini: "" });
   const [showKeys, setShowKeys] = useState({ claude: false, gpt: false, gemini: false });
   const [settingsSaved, setSettingsSaved] = useState(false);
+  const [logoTaps, setLogoTaps] = useState(0);
+  const [showToast, setShowToast] = useState(false);
 
-  // Load from localStorage client-side only — fixes SSR hydration error
   useEffect(() => {
     try {
       const p = localStorage.getItem("o31_projects");
@@ -144,6 +147,19 @@ export default function OneThreeOne() {
 
   useEffect(() => { localStorage.setItem("o31_projects", JSON.stringify(projects)); }, [projects]);
   useEffect(() => { localStorage.setItem("o31_audit", JSON.stringify(auditLog)); }, [auditLog]);
+
+  // Hidden reset — tap logo 5 times to reset onboarding only (keys stay)
+  function handleLogoTap() {
+    const next = logoTaps + 1;
+    setLogoTaps(next);
+    if (next >= 5) {
+      localStorage.removeItem("131_onboarding_seen");
+      setLogoTaps(0);
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 2500);
+      setTimeout(() => window.location.reload(), 500);
+    }
+  }
 
   function saveKeys() {
     try {
@@ -200,11 +216,12 @@ export default function OneThreeOne() {
     const modeLabel = resumeMode === "polish" ? "Polish only" : resumeMode === "tailor" ? "Tailor to job" : "Polish + Tailor";
     const log1 = addAudit(auditLog, "resume", "Resume run started", modeLabel);
     setAuditLog(log1);
-    const systemPrompt = `You are an expert resume writer and career coach specializing in helping highly educated professionals land roles that match their qualifications. You write with precision, clarity, and impact. Never fabricate experience. Enhance what exists.`;
-    let userPrompt = "";
-    if (resumeMode === "polish") userPrompt = `Polish and strengthen this resume. Improve clarity, impact, and professional tone. Return the complete improved resume.\n\nRESUME:\n${resumeText}`;
-    else if (resumeMode === "tailor") userPrompt = `Tailor this resume specifically for the job posting below. Return the complete tailored resume.\n\nRESUME:\n${resumeText}\n\nJOB POSTING:\n${jobPosting}`;
-    else userPrompt = `Polish this resume then tailor it for the job posting below. Return the complete result.\n\nRESUME:\n${resumeText}\n\nJOB POSTING:\n${jobPosting}`;
+    const systemPrompt = `You are an expert resume writer and career coach. Never fabricate experience. Enhance what exists.`;
+    let userPrompt = resumeMode === "polish"
+      ? `Polish and strengthen this resume. Return the complete improved resume.\n\nRESUME:\n${resumeText}`
+      : resumeMode === "tailor"
+      ? `Tailor this resume for the job posting. Return the complete tailored resume.\n\nRESUME:\n${resumeText}\n\nJOB POSTING:\n${jobPosting}`
+      : `Polish then tailor this resume for the job posting. Return the complete result.\n\nRESUME:\n${resumeText}\n\nJOB POSTING:\n${jobPosting}`;
     try {
       const res = await fetch("/api/synthesize", {
         method: "POST",
@@ -230,8 +247,9 @@ export default function OneThreeOne() {
     <>
       <style>{CSS}</style>
       <WelcomeModal />
+      <div className={`reset-toast ${showToast ? "show" : ""}`}>Onboarding reset ✓</div>
       <div className="app">
-        <div className="header">
+        <div className="header" onClick={handleLogoTap}>
           <div className="logo">1<span>3</span>1</div>
           <div className="tagline">Three Models · One Output · No Overthinking</div>
         </div>
@@ -429,9 +447,9 @@ export default function OneThreeOne() {
             <div className="card">
               <div className="card-label">About Your Keys</div>
               <div style={{fontSize:13,color:"#9090a8",lineHeight:1.7}}>
-                <p style={{marginBottom:10}}>Keys are stored in your browser&apos;s local storage — the same place your projects and audit log live. They never leave your device.</p>
-                <p style={{marginBottom:10}}>If you&apos;re using the iOS app, keys persist between sessions in the WKWebView local storage on your phone.</p>
-                <p>Each provider charges per token used. Claude and GPT-4o cost roughly $0.01–0.05 per run. Gemini Flash is significantly cheaper.</p>
+                <p style={{marginBottom:10}}>Keys are stored in your browser&apos;s local storage — never sent to our servers.</p>
+                <p style={{marginBottom:10}}>On iOS, keys persist between sessions in the WKWebView local storage on your phone.</p>
+                <p>Each provider charges per token. Claude and GPT-4o cost roughly $0.01–0.05 per run. Gemini Flash is significantly cheaper.</p>
               </div>
             </div>
           </div>
