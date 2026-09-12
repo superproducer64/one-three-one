@@ -18,7 +18,7 @@ const CSS = `
   .card { background: #13131a; border: 1px solid #1e1e2e; border-radius: 12px; padding: 24px; margin-bottom: 16px; }
   .card-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #3b82f6; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; }
   label { display: block; font-size: 13px; color: #9090a8; margin-bottom: 6px; font-weight: 500; }
-  input[type="text"], input[type="password"], textarea, select { width: 100%; background: #0a0a0f; border: 1px solid #1e1e2e; border-radius: 8px; color: #e2e2e8; font-family: 'Space Grotesk', sans-serif; font-size: 14px; padding: 10px 14px; outline: none; transition: border-color 0.15s; }
+input[type="text"], input[type="password"], textarea, select { width: 100%; background: #0a0a0f; border: 1px solid #1e1e2e; border-radius: 8px; color: #e2e2e8; font-family: 'Space Grotesk', sans-serif; font-size: 14px; padding: 10px 14px; outline: none; transition: border-color 0.15s; -webkit-user-select: text; user-select: text; -webkit-appearance: none; }
   input[type="text"]:focus, input[type="password"]:focus, textarea:focus { border-color: #3b82f6; }
   textarea { resize: vertical; min-height: 100px; }
   .form-row { margin-bottom: 16px; }
