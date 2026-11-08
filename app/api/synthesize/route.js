@@ -56,9 +56,13 @@ export async function POST(req) {
 
   const total = claudeWeight + gptWeight + geminiWeight;
   const synthParts = [];
-  if (results.claude) synthParts.push(`[RESPONSE A — weight ${Math.round(claudeWeight / total * 100)}%]\n${results.claude}`);
-  if (results.gpt) synthParts.push(`[RESPONSE B — weight ${Math.round(gptWeight / total * 100)}%]\n${results.gpt}`);
-  if (results.gemini) synthParts.push(`[RESPONSE C — weight ${Math.round(geminiWeight / total * 100)}%]\n${results.gemini}`);
+  const usedLabels = [];
+  if (results.claude) usedLabels.push("CLAUDE");
+  if (results.gpt) usedLabels.push("GPT-4o");
+  if (results.gemini) usedLabels.push("GEMINI");
+  if (results.claude) synthParts.push(`[CLAUDE — weight ${Math.round(claudeWeight / total * 100)}%]\n${results.claude}`);
+  if (results.gpt) synthParts.push(`[GPT-4o — weight ${Math.round(gptWeight / total * 100)}%]\n${results.gpt}`);
+  if (results.gemini) synthParts.push(`[GEMINI — weight ${Math.round(geminiWeight / total * 100)}%]\n${results.gemini}`);
 
   if (!synthParts.length) {
     return NextResponse.json({ error: "All model calls failed", details: results.errors }, { status: 500 });
@@ -72,7 +76,19 @@ export async function POST(req) {
 
   // Multi-model — synthesize via Claude
   try {
-    const synthPrompt = `You are a synthesis engine. Multiple AI models responded to the same prompt. Each response has a weight indicating how much it should influence the final output. Synthesize them into ONE cohesive, polished response that honors those weights. Return only the final synthesized response — no preamble, no labels, no explanation.
+    const synthPrompt = `You are a synthesis engine. Multiple AI models responded to the same prompt. Each response is labeled with the model that produced it and a weight indicating how much it should influence the final output. Synthesize them into ONE cohesive, polished response that honors those weights.
+
+DEFAULT BEHAVIOR: Return only the final synthesized response — no preamble, no labels, no explanation, and no commentary about the models themselves. Do not recommend a model or approach unless the rule below applies.
+
+MODEL COMPARISON RULE: Only if the ORIGINAL PROMPT explicitly asks which model/response is best, asks you to compare or evaluate the models' outputs, or asks for a model recommendation, append a section titled "Model Comparison" after the synthesized response. In it:
+1. Score each response that appears below (refer to them only by their labels: ${usedLabels.join(", ")} — never "Response A/B/C", and never mention any model or tool that is not listed) from 1-5 on each criterion:
+   - Structural/mechanical accuracy
+   - Depth of content-specific analysis
+   - Actionability of suggestions
+   - Clarity for the target audience
+2. For each criterion, name which model scored best and give a one-line, specific reason tied to what that response actually said or did.
+3. Do not give a vague overall endorsement (e.g. "X is best for this"). Only name winners per criterion, and only among the models listed below.
+If the ORIGINAL PROMPT does not ask for this, omit the "Model Comparison" section entirely.
 
 ORIGINAL PROMPT: ${prompt}
 
