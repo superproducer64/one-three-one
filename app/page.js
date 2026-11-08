@@ -96,6 +96,9 @@ const CSS = `
   .divider { border: none; border-top: 1px solid #1e1e2e; margin: 20px 0; }
   .reset-toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); background: #1e1e2e; color: #3b82f6; font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 8px 18px; border-radius: 20px; border: 1px solid #3b82f6; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
   .reset-toast.show { opacity: 1; }
+  .sample-select { font-size: 13px; color: #9090a8; background: #0a0a0f; cursor: pointer; }
+  .sample-select:focus { border-color: #3b82f6; }
+  .sample-row { margin-bottom: 12px; }
 `;
 
 const ts = () => new Date().toLocaleTimeString("en-US", { hour12: false });
@@ -103,6 +106,25 @@ const tsISO = () => new Date().toISOString();
 function addAudit(log, type, action, detail = "") {
   return [{ id: Date.now(), time: ts(), isoTime: tsISO(), type, action, detail }, ...log].slice(0, 200);
 }
+
+const SAMPLE_PROMPTS = [
+  "Draft a cold outreach email to a potential investor for [your startup] — persuasive but not salesy",
+  "Compare the pros and cons of [option A] vs [option B] for [decision]",
+  "Write a punchy one-paragraph pitch for this idea: [your idea]",
+  "Give me 10 blog post titles for [topic], ranked by how clickable they are",
+  "Explain [complex topic] like I'm a smart 12-year-old",
+  "Critique this plan and find the biggest hole in it: [paste plan]",
+  "Turn these rough notes into a clean, organized summary: [paste notes]",
+  "Brainstorm 5 unconventional marketing angles for [product/service]",
+];
+
+const RESUME_DIRECTION_SAMPLES = [
+  "Stay technical — don't shift my career direction",
+  "Pivot toward product management",
+  "Pivot toward business development",
+  "Aim this at an early-stage startup audience, not enterprise",
+  "I'm going for a step up in seniority, not a lateral move",
+];
 
 const MODELS = [
   { id: "claude", label: "Claude", role: "Depth & nuance", color: "#f59e0b", placeholder: "sk-ant-...", link: "https://console.anthropic.com/settings/keys", linkLabel: "Get key → console.anthropic.com" },
@@ -365,6 +387,12 @@ ${resumeOutput}`;
             {selectedProject && (
               <div className="card">
                 <div className="card-label">Your Prompt</div>
+                <div className="sample-row">
+                  <select className="sample-select" value="" onChange={e => { if (e.target.value) setPrompt(e.target.value); }}>
+                    <option value="">✦ Try a sample prompt...</option>
+                    {SAMPLE_PROMPTS.map((s, i) => <option key={i} value={s}>{s}</option>)}
+                  </select>
+                </div>
                 <div className="form-row">
                   <textarea
                     placeholder="Enter your prompt here..."
@@ -417,6 +445,12 @@ ${resumeOutput}`;
               {resumeMode === "polish" && (
                 <div className="form-row">
                   <label>Target Direction (optional)</label>
+                  <div className="sample-row">
+                    <select className="sample-select" value="" onChange={e => { if (e.target.value) setTargetDirection(e.target.value); }}>
+                      <option value="">✦ Try a sample direction...</option>
+                      {RESUME_DIRECTION_SAMPLES.map((s, i) => <option key={i} value={s}>{s}</option>)}
+                    </select>
+                  </div>
                   <input type="text" placeholder="e.g. stay technical, pivot to business development..." value={targetDirection} onChange={e => setTargetDirection(e.target.value)} autoComplete="off" autoCorrect="on" />
                 </div>
               )}
