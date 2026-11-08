@@ -82,6 +82,9 @@ const CSS = `
   .mode-btn.active { background: #1a1030; border-color: #a78bfa; color: #a78bfa; }
   .resume-output-box { background: #0a0a0f; border: 1px solid #a78bfa44; border-radius: 10px; padding: 20px; font-size: 15px; line-height: 1.8; color: #ede8f8; white-space: pre-wrap; min-height: 200px; -webkit-user-select: text; user-select: text; }
   .resume-output-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #a78bfa; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
+  .rewrite-output-box { background: #0a0a0f; border: 1px solid #22c55e44; border-radius: 10px; padding: 20px; font-size: 15px; line-height: 1.8; color: #e4f5ea; white-space: pre-wrap; min-height: 200px; -webkit-user-select: text; user-select: text; }
+  .rewrite-output-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #22c55e; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
+  .resume-note { font-size: 12px; color: #555568; margin-top: 10px; font-style: italic; }
   .key-input-row { display: flex; gap: 8px; align-items: center; }
   .key-input-row input { flex: 1; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
   .key-link { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #3b82f6; text-decoration: none; margin-top: 4px; display: inline-block; }
@@ -121,10 +124,14 @@ export default function OneThreeOne() {
   const [showNewProject, setShowNewProject] = useState(false);
   const [resumeText, setResumeText] = useState("");
   const [jobPosting, setJobPosting] = useState("");
-  const [resumeMode, setResumeMode] = useState("both");
-  const [resumeOutput, setResumeOutput] = useState("");
+  const [targetDirection, setTargetDirection] = useState("");
+  const [resumeMode, setResumeMode] = useState("polish");
+  const [resumeOutput, setResumeOutput] = useState(""); // suggestions/critique — default, non-destructive
   const [resumeLoading, setResumeLoading] = useState(false);
   const [resumeError, setResumeError] = useState("");
+  const [resumeRewrite, setResumeRewrite] = useState(""); // only populated by explicit opt-in step
+  const [rewriteLoading, setRewriteLoading] = useState(false);
+  const [rewriteError, setRewriteError] = useState("");
   const [keys, setKeys] = useState({ claude: "", gpt: "", gemini: "" });
   const [showKeys, setShowKeys] = useState({ claude: false, gpt: false, gemini: false });
   const [settingsSaved, setSettingsSaved] = useState(false);
@@ -210,19 +217,92 @@ export default function OneThreeOne() {
     } finally { setLoading(false); }
   }
 
+  // Fixed rubric — runs every time, regardless of mode or target direction (objective fixes, not audience framing)
+  const RESUME_MECHANICS_RUBRIC = `- Structure & flow — section order, what leads, what's buried
+- Bullet mechanics — action→result ordering, length/density, passive vs. active construction
+- Dates/timeline consistency — unexplained overlaps, stale "present" entries, gaps
+- ATS keyword coverage — presence of role-relevant terms
+- Quantification strength — are achievements measurable, are the best ones foregrounded`;
+
+  function buildResumeSuggestionsPrompt() {
+    if (resumeMode === "polish") {
+      return `You are an expert resume reviewer. This is a CRITIQUE ONLY — do not rewrite, rephrase, or produce a revised resume. Give specific, actionable observations referencing actual content from the resume.
+
+Score and address every one of these fixed categories, every time, regardless of target direction:
+${RESUME_MECHANICS_RUBRIC}
+${targetDirection.trim() ? `\nThe candidate's target direction: "${targetDirection.trim()}". Categories 1-3 above (structure, bullet mechanics, dates) are objective and must not be colored by this direction. Only let it inform categories 4-5 (keyword coverage, quantification) and any closing framing notes.` : ""}
+
+Return your critique as clearly headed sections, one per category above. Do not include a rewritten resume anywhere in your response — suggestions and observations only.
+
+RESUME:
+${resumeText}`;
+    }
+    // align mode
+    return `You are an expert resume analyst comparing a resume against a specific job posting. This is a CRITIQUE / GAP ANALYSIS ONLY — do not rewrite the resume.
+
+First, run the same objective mechanics pass every resume gets, regardless of audience:
+${RESUME_MECHANICS_RUBRIC}
+
+Then produce a gap analysis against the job posting, as clearly headed sections:
+- What in the resume matches the posting's language/requirements
+- What's missing that should be added or emphasized
+- What's present but irrelevant to this posting and could be cut
+- A rough keyword/ATS match percentage, plus the top 5-8 missing keywords
+
+Do not include a rewritten resume anywhere in your response — suggestions and observations only.
+
+RESUME:
+${resumeText}
+
+JOB POSTING:
+${jobPosting}`;
+  }
+
   async function runResume() {
     if (!resumeText.trim()) return;
-    if (resumeMode !== "polish" && !jobPosting.trim()) { alert("Please paste the job posting."); return; }
-    setResumeLoading(true); setResumeOutput(""); setResumeError("");
-    const modeLabel = resumeMode === "polish" ? "Polish only" : resumeMode === "tailor" ? "Tailor to job" : "Polish + Tailor";
-    const log1 = addAudit(auditLog, "resume", "Resume run started", modeLabel);
+    if (resumeMode === "align" && !jobPosting.trim()) { alert("Please paste the job posting."); return; }
+    setResumeLoading(true); setResumeOutput(""); setResumeError(""); setResumeRewrite(""); setRewriteError("");
+    const modeLabel = resumeMode === "polish" ? "Polish" : "Polish + Align to Job";
+    const log1 = addAudit(auditLog, "resume", "Resume suggestions started", modeLabel);
     setAuditLog(log1);
-    const systemPrompt = `You are an expert resume writer and career coach. Never fabricate experience. Enhance what exists.`;
-    let userPrompt = resumeMode === "polish"
-      ? `Polish and strengthen this resume. Return the complete improved resume.\n\nRESUME:\n${resumeText}`
-      : resumeMode === "tailor"
-      ? `Tailor this resume for the job posting. Return the complete tailored resume.\n\nRESUME:\n${resumeText}\n\nJOB POSTING:\n${jobPosting}`
-      : `Polish then tailor this resume for the job posting. Return the complete result.\n\nRESUME:\n${resumeText}\n\nJOB POSTING:\n${jobPosting}`;
+    const systemPrompt = `You are an expert resume writer and career coach. Never fabricate experience. You are producing critique and suggestions only in this step — do not write a rewritten resume.`;
+    try {
+      const res = await fetch("/api/synthesize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: buildResumeSuggestionsPrompt(), systemPrompt, claudeWeight: 40, gptWeight: 35, geminiWeight: 25,
+          ...(keys.claude && { claudeKey: keys.claude }),
+          ...(keys.gpt && { gptKey: keys.gpt }),
+          ...(keys.gemini && { geminiKey: keys.gemini }),
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
+      setResumeOutput(data.output);
+      setAuditLog(addAudit(log1, "resume", "Resume suggestions complete", `Mode: ${modeLabel}`));
+    } catch (err) {
+      setResumeError(err.message);
+      setAuditLog(addAudit(log1, "error", "Resume suggestions failed", err.message));
+    } finally { setResumeLoading(false); }
+  }
+
+  // Separate, explicit opt-in step — nothing touches the original resume until the user asks for this.
+  async function generateRewrite() {
+    if (!resumeOutput || !resumeText.trim()) return;
+    if (!confirm("This will generate a full rewritten version of your resume based on the suggestions above. Your original pasted text won't be changed — this creates a separate version below. Continue?")) return;
+    setRewriteLoading(true); setRewriteError(""); setResumeRewrite("");
+    const modeLabel = resumeMode === "polish" ? "Polish" : "Polish + Align to Job";
+    const log1 = addAudit(auditLog, "resume", "Resume rewrite started", modeLabel);
+    setAuditLog(log1);
+    const systemPrompt = `You are an expert resume writer. Never fabricate experience, companies, titles, or dates — only reorganize, rephrase, and strengthen what is actually true in the original resume. Apply the critique you were given.`;
+    const userPrompt = `You previously critiqued this resume. Now produce a complete REWRITTEN version that applies that critique. Return only the full rewritten resume text, ready to use — no commentary, no explanation.
+${resumeMode === "align" ? `\nAlign wording and emphasis toward this job posting:\n${jobPosting}\n` : ""}${targetDirection.trim() ? `\nTarget direction: ${targetDirection.trim()}\n` : ""}
+ORIGINAL RESUME:
+${resumeText}
+
+YOUR PRIOR CRITIQUE:
+${resumeOutput}`;
     try {
       const res = await fetch("/api/synthesize", {
         method: "POST",
@@ -236,12 +316,12 @@ export default function OneThreeOne() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
-      setResumeOutput(data.output);
-      setAuditLog(addAudit(log1, "resume", "Resume complete", `Mode: ${modeLabel}`));
+      setResumeRewrite(data.output);
+      setAuditLog(addAudit(log1, "resume", "Resume rewrite complete", `Mode: ${modeLabel}`));
     } catch (err) {
-      setResumeError(err.message);
-      setAuditLog(addAudit(log1, "error", "Resume failed", err.message));
-    } finally { setResumeLoading(false); }
+      setRewriteError(err.message);
+      setAuditLog(addAudit(log1, "error", "Resume rewrite failed", err.message));
+    } finally { setRewriteLoading(false); }
   }
 
   return (
@@ -326,33 +406,55 @@ export default function OneThreeOne() {
             <div className="card">
               <div className="card-label">Mode</div>
               <div className="mode-selector">
-                {[["polish","Polish Resume"],["tailor","Tailor to Job"],["both","Polish + Tailor"]].map(([id,label]) => (
-                  <button key={id} className={`mode-btn ${resumeMode===id?"active":""}`} onClick={() => setResumeMode(id)}>{label}</button>
+                {[["polish","Polish"],["align","Polish + Align to Job"]].map(([id,label]) => (
+                  <button key={id} className={`mode-btn ${resumeMode===id?"active":""}`} onClick={() => { setResumeMode(id); setResumeOutput(""); setResumeRewrite(""); setResumeError(""); setRewriteError(""); }}>{label}</button>
                 ))}
               </div>
               <div className="form-row">
                 <label>Paste Your Resume</label>
                 <textarea placeholder="Paste your full resume here..." value={resumeText} onChange={e => setResumeText(e.target.value)} style={{minHeight:200}} autoComplete="off" />
               </div>
-              {resumeMode !== "polish" && (
+              {resumeMode === "polish" && (
+                <div className="form-row">
+                  <label>Target Direction (optional)</label>
+                  <input type="text" placeholder="e.g. stay technical, pivot to business development..." value={targetDirection} onChange={e => setTargetDirection(e.target.value)} autoComplete="off" autoCorrect="on" />
+                </div>
+              )}
+              {resumeMode === "align" && (
                 <div className="form-row">
                   <label>Paste Job Posting</label>
                   <textarea placeholder="Paste the full job description here..." value={jobPosting} onChange={e => setJobPosting(e.target.value)} style={{minHeight:160}} autoComplete="off" />
                 </div>
               )}
               <button className="btn btn-primary" onClick={runResume} disabled={resumeLoading||!resumeText.trim()} style={{background:resumeLoading?undefined:"#7c3aed"}}>
-                {resumeLoading ? "Analyzing..." : "Run Resume 1·3·1"}
+                {resumeLoading ? "Analyzing..." : "Get Suggestions"}
               </button>
+              <div className="resume-note">Suggestions only — nothing here touches or rewrites your pasted resume.</div>
             </div>
-            {resumeLoading && <div className="loader"><div className="dot-pulse"><span/><span/><span/></div>Three models optimizing your resume...</div>}
+            {resumeLoading && <div className="loader"><div className="dot-pulse"><span/><span/><span/></div>Three models reviewing your resume...</div>}
             {resumeError && <div className="error-box">Error: {resumeError}</div>}
             {resumeOutput && !resumeLoading && (
               <div className="card">
-                <div className="resume-output-label">Optimized Resume</div>
+                <div className="resume-output-label">Suggestions</div>
                 <div className="resume-output-box">{resumeOutput}</div>
                 <div className="btn-row">
-                  <button className="btn btn-ghost" onClick={() => navigator.clipboard.writeText(resumeOutput)}>Copy Resume</button>
-                  <button className="btn btn-ghost" onClick={() => { setResumeOutput(""); setResumeError(""); }}>Clear</button>
+                  <button className="btn btn-ghost" onClick={() => navigator.clipboard.writeText(resumeOutput)}>Copy Suggestions</button>
+                  <button className="btn btn-ghost" onClick={() => { setResumeOutput(""); setResumeError(""); setResumeRewrite(""); setRewriteError(""); }}>Clear</button>
+                  <button className="btn btn-primary" onClick={generateRewrite} disabled={rewriteLoading} style={{background:rewriteLoading?undefined:"#22c55e"}}>
+                    {rewriteLoading ? "Rewriting..." : "Generate Rewritten Version →"}
+                  </button>
+                </div>
+              </div>
+            )}
+            {rewriteLoading && <div className="loader"><div className="dot-pulse"><span/><span/><span/></div>Applying suggestions to a full rewrite...</div>}
+            {rewriteError && <div className="error-box">Error: {rewriteError}</div>}
+            {resumeRewrite && !rewriteLoading && (
+              <div className="card">
+                <div className="rewrite-output-label">Rewritten Version</div>
+                <div className="rewrite-output-box">{resumeRewrite}</div>
+                <div className="btn-row">
+                  <button className="btn btn-ghost" onClick={() => navigator.clipboard.writeText(resumeRewrite)}>Copy Rewrite</button>
+                  <button className="btn btn-ghost" onClick={() => setResumeRewrite("")}>Clear</button>
                 </div>
               </div>
             )}
